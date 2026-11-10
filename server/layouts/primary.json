@@ -1,0 +1,48 @@
+{
+  "id": "primary",
+  "name": "Primary Report Card",
+  "description": "For lower primary and upper primary classes. Displays subject performance, totals, grades, attendance and teacher/principal comments.",
+  "sections": [
+    {
+      "type": "header",
+      "title": "Student Details",
+      "fields": [
+        { "key": "studentName", "label": "Student Name" },
+        { "key": "className", "label": "Class" },
+        { "key": "termName", "label": "Term" },
+        { "key": "sessionName", "label": "Session" },
+        { "key": "studentNo", "label": "Admission Number" }
+      ]
+    },
+    {
+      "type": "subjects",
+      "title": "Academic Performance",
+      "columns": [
+        { "key": "subject", "label": "Subject" },
+        { "key": "test", "label": "Test" },
+        { "key": "exam", "label": "Exam" },
+        { "key": "total", "label": "Total" },
+        { "key": "grade", "label": "Grade" },
+        { "key": "position", "label": "Position" }
+      ]
+    },
+    {
+      "type": "summary",
+      "title": "Summary",
+      "fields": [
+        { "key": "average", "label": "Average" },
+        { "key": "classAverage", "label": "Class Average" },
+        { "key": "attendance", "label": "Attendance" },
+        { "key": "nextTermTarget", "label": "Target for Next Term" }
+      ]
+    },
+    {
+      "type": "comments",
+      "title": "Teacher and Principal Notes",
+      "fields": [
+        { "key": "teacherComment", "label": "Teacher's Comment" },
+        { "key": "principalComment", "label": "Principal's Comment" }
+      ]
+    }
+  ]
+}

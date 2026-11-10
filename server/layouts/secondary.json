@@ -1,0 +1,49 @@
+{
+  "id": "secondary",
+  "name": "Secondary Report Card",
+  "description": "For junior and senior secondary classes. Includes subject scores, subject averages, grades, position and comment sections similar to a school-issued paper result slip.",
+  "sections": [
+    {
+      "type": "header",
+      "title": "Student Details",
+      "fields": [
+        { "key": "studentName", "label": "Student Name" },
+        { "key": "className", "label": "Class" },
+        { "key": "termName", "label": "Term" },
+        { "key": "sessionName", "label": "Session" },
+        { "key": "studentNo", "label": "Admission Number" }
+      ]
+    },
+    {
+      "type": "subjects",
+      "title": "Academic Performance",
+      "columns": [
+        { "key": "subject", "label": "Subject" },
+        { "key": "test", "label": "Test" },
+        { "key": "exam", "label": "Exam" },
+        { "key": "total", "label": "Total" },
+        { "key": "grade", "label": "Grade" },
+        { "key": "position", "label": "Position" }
+      ]
+    },
+    {
+      "type": "summary",
+      "title": "Summary",
+      "fields": [
+        { "key": "average", "label": "Average" },
+        { "key": "classAverage", "label": "Class Average" },
+        { "key": "attendance", "label": "Attendance" },
+        { "key": "conduct", "label": "Conduct" },
+        { "key": "nextTermTarget", "label": "Target for Next Term" }
+      ]
+    },
+    {
+      "type": "comments",
+      "title": "Teacher and Principal Notes",
+      "fields": [
+        { "key": "teacherComment", "label": "Teacher's Comment" },
+        { "key": "principalComment", "label": "Principal's Comment" }
+      ]
+    }
+  ]
+}

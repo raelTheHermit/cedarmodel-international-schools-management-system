@@ -1,0 +1,15 @@
+{
+  "name": "cedarmodel-school-results-portal",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspaces --if-present",
+    "migrate": "npm --prefix server run migrate"
+  }
+}
