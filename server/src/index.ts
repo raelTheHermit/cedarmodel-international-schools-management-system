@@ -2,7 +2,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
-import { createAuthApp } from './auth.js';
+import { createAuthApp, createCorsMiddleware } from './auth.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
 
@@ -13,6 +13,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: false,
 }));
+app.use(createCorsMiddleware());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {

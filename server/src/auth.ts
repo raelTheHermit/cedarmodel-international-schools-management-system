@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
-import mysql from 'mysql2/promise';
 import type { NextFunction, Request, Response } from 'express';
 import express from 'express';
+import { Pool } from 'pg';
 import { z } from 'zod';
 
 declare global {
@@ -16,7 +16,7 @@ declare global {
 export const GENERIC_AUTH_ERROR = 'Invalid credentials or account locked.';
 export const SESSION_COOKIE_NAME = 'school_portal_session';
 
-export type StaffRole = 'administrator' | 'principal';
+export type StaffRole = 'superadmin' | 'teacher';
 
 export type StaffUserRecord = {
   id: number;
@@ -113,6 +113,31 @@ function clearSessionCookie(res: Response): void {
   res.clearCookie(SESSION_COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieOptions.secure });
 }
 
+export function createCorsMiddleware() {
+  const allowedOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const origin = req.headers.origin;
+
+    if (!origin || origin !== allowedOrigin) {
+      next();
+      return;
+    }
+
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+
+    next();
+  };
+}
+
 async function isLockedOut(repo: AuthRepository, subject: string | null, ipAddress: string): Promise<boolean> {
   const failedAttempts = await repo.countRecentFailedAttempts(subject, ipAddress);
   return failedAttempts >= 5;
@@ -161,86 +186,107 @@ export function requireParent(req: Request, res: Response, next: NextFunction): 
   next();
 }
 
-function createDefaultRepository(): AuthRepository {
-  const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+export function buildRecentFailedAttemptsQuery(): string {
+  return `
+    SELECT COUNT(*)::int AS "failedCount"
+    FROM login_attempts
+    WHERE success = false
+      AND created_at >= NOW() - INTERVAL '15 minutes'
+      AND (
+        (COALESCE($1, '') <> '' AND admission_number = $1)
+        OR ip_address = $2
+      )
+  `;
+}
 
-  if (!DB_HOST || !DB_USER || !DB_NAME) {
+function createDefaultRepository(): AuthRepository {
+  const {
+    DB_HOST,
+    DB_PORT,
+    DB_USER,
+    DB_PASSWORD,
+    DB_NAME,
+    PGHOST,
+    PGPORT,
+    PGUSER,
+    PGPASSWORD,
+    PGDATABASE,
+  } = process.env;
+
+  const host = DB_HOST ?? PGHOST;
+  const port = Number(DB_PORT ?? PGPORT ?? 5432);
+  const user = DB_USER ?? PGUSER;
+  const password = DB_PASSWORD ?? PGPASSWORD ?? '';
+  const database = DB_NAME ?? PGDATABASE;
+
+  if (!host || !user || !database) {
     throw new Error('Database environment variables are not configured.');
   }
 
-  const pool = mysql.createPool({
-    host: DB_HOST,
-    port: Number(DB_PORT ?? 3306),
-    user: DB_USER,
-    password: DB_PASSWORD ?? '',
-    database: DB_NAME,
-    connectionLimit: 10,
-    waitForConnections: true,
+  const pool = new Pool({
+    host,
+    port,
+    user,
+    password,
+    database,
+    max: 10,
   });
 
   return {
     async findStaffByEmail(email: string) {
-      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-        'SELECT id, email, password_hash AS passwordHash, role FROM staff_users WHERE email = ? LIMIT 1',
+      const result = await pool.query(
+        'SELECT id, email, password_hash AS "passwordHash", role FROM staff_users WHERE email = $1 LIMIT 1',
         [email.toLowerCase()],
       );
 
-      const row = rows[0];
+      const row = result.rows[0];
       if (!row) return null;
 
       return {
         id: Number(row.id),
-        email: row.email,
-        passwordHash: row.passwordHash,
-        role: row.role,
+        email: String(row.email),
+        passwordHash: String(row.passwordHash),
+        role: String(row.role) as StaffRole,
       };
     },
 
     async findStudentByAdmissionNumber(admissionNumber: string) {
-      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-        'SELECT id, admission_number AS admissionNumber, class_id AS classId, active FROM students WHERE admission_number = ? LIMIT 1',
+      const result = await pool.query(
+        'SELECT id, admission_number AS "admissionNumber", class_id AS "classId", active FROM students WHERE admission_number = $1 LIMIT 1',
         [admissionNumber],
       );
 
-      const row = rows[0];
+      const row = result.rows[0];
       if (!row) return null;
 
       return {
         id: Number(row.id),
-        admissionNumber: row.admissionNumber,
+        admissionNumber: String(row.admissionNumber),
         classId: Number(row.classId),
         active: Boolean(row.active),
       };
     },
 
     async findParentAccessCodeHash(studentId: number) {
-      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-        'SELECT code_hash AS codeHash FROM access_codes WHERE student_id = ? ORDER BY id DESC LIMIT 1',
+      const result = await pool.query(
+        'SELECT code_hash AS "codeHash" FROM access_codes WHERE student_id = $1 ORDER BY id DESC LIMIT 1',
         [studentId],
       );
 
-      const row = rows[0];
-      return row ? row.codeHash : null;
+      const row = result.rows[0];
+      return row ? String(row.codeHash) : null;
     },
 
     async countRecentFailedAttempts(subject: string | null, ipAddress: string) {
-      const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-        `SELECT COUNT(*) AS failedCount
-        FROM login_attempts
-        WHERE success = 0
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)
-          AND ((admission_number = ? AND ? IS NOT NULL) OR ip_address = ?)
-        `,
-        [subject, subject, ipAddress],
-      );
+      const result = await pool.query(buildRecentFailedAttemptsQuery(), [subject ?? null, ipAddress]);
 
-      return Number(rows[0]?.failedCount ?? 0);
+      return Number(result.rows[0]?.failedCount ?? 0);
     },
 
     async recordLoginAttempt({ subject, ipAddress, success }) {
-      await pool.execute(
-        'INSERT INTO login_attempts (admission_number, ip_address, success) VALUES (?, ?, ?)',
-        [subject, ipAddress, success ? 1 : 0],
+      await pool.query(
+        'INSERT INTO login_attempts (admission_number, ip_address, success) VALUES ($1, $2, $3)',
+        [subject, ipAddress, success],
       );
     },
   };

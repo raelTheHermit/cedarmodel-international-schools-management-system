@@ -13,7 +13,7 @@ Version 1 only. Do not add anything that is not listed under "In scope".
 - Hosting is Hostinger Business or Namecheap-style cPanel shared hosting, running one Node.js process. Therefore:
   - No Docker, Redis, queues, background workers, WebSockets, or logic that depends on cron.
   - Every request must finish well under 60 seconds (Hostinger stops requests at 120 s).
-  - Database is MySQL/MariaDB. Do NOT use PostgreSQL features. Do NOT use Prisma or any package that needs native binaries. Use `mysql2` (or Knex) with plain SQL migrations, and `bcryptjs` (pure JS), not `bcrypt`.
+  - Database is PostgreSQL. Do NOT use MySQL-specific features. Use `pg` (or Knex) with plain SQL migrations, and `bcryptjs` (pure JS), not `bcrypt`.
   - Process Excel uploads inside the request (about 500 rows, 5 MB file limit).
 - Frontend: React + Vite + TypeScript, built to static files (`dist/`). Client-side routing needs a `public/.htaccess` rewrite to `index.html`.
 - Backend: Node.js + Express + TypeScript, one process, config only from environment variables (`.env.example` committed, `.env` never).
