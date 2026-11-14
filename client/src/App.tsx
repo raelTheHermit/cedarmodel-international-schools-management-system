@@ -1,10 +1,33 @@
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import brandIcon from './assets/icons/logo.png';
 import lockIcon from './assets/icons/lock icon2.svg';
 import parentIcon from './assets/icons/parent login.svg';
 import adminIcon from './assets/icons/admin login.svg';
+
+const MessageModalContext = createContext<(message: string) => void>(() => undefined);
+
+function useMessageModal() {
+  return useContext(MessageModalContext);
+}
+
+function MessageModal({ message, onClose }: { message: string; onClose: () => void }) {
+  if (!message) return null;
+
+  return (
+    <div className="message-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="message-modal" role="dialog" aria-modal="true" aria-labelledby="message-modal-title">
+        <span className="message-modal-mark" aria-hidden="true">!</span>
+        <h2 id="message-modal-title">Portal message</h2>
+        <p>{message}</p>
+        <button type="button" className="message-modal-button" onClick={onClose} autoFocus>Okay</button>
+      </section>
+    </div>
+  );
+}
 
 function AssetIcon({ src, alt = '', className = '' }: { src: string; alt?: string; className?: string }) {
   return <img src={src} alt={alt} className={className} />;
@@ -155,6 +178,7 @@ function LandingPage() {
 
 function StaffLoginPage() {
   const navigate = useNavigate();
+  const showMessage = useMessageModal();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -171,7 +195,7 @@ function StaffLoginPage() {
         },
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid school account.');
+      showMessage(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid school account.');
     }
   };
 
@@ -226,6 +250,7 @@ function StaffLoginPage() {
 
 function ParentLoginPage() {
   const navigate = useNavigate();
+  const showMessage = useMessageModal();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -243,7 +268,7 @@ function ParentLoginPage() {
 
       navigate('/parent-dashboard', { state: { parent: selectedParent } });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid parent account.');
+      showMessage(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid parent account.');
     }
   };
 
@@ -261,13 +286,13 @@ function ParentLoginPage() {
         <form className="parent-login-form" onSubmit={handleSubmit}>
           <label>
             <span>Admission number</span>
-            <input type="text" name="admissionNumber" defaultValue="123456789" placeholder="123456789" />
+            <input type="text" name="admissionNumber" placeholder="Enter admission number" />
           </label>
 
           <label>
             <span>Access code</span>
             <div className="password-lockup">
-              <input type="password" name="accessCode" defaultValue="CODE1234" placeholder="Access code" />
+              <input type="password" name="accessCode" placeholder="Enter access code" />
               <span className="eye-icon" aria-hidden="true">◌</span>
             </div>
           </label>
@@ -1756,6 +1781,7 @@ function AccessCodeManagementPage() {
 
 function StaffDashboardPage() {
   const navigate = useNavigate();
+  const showMessage = useMessageModal();
   const location = useLocation();
   const role: Role = (location.state as { role?: Role } | null)?.role ?? 'superadmin';
   const fullName = (location.state as { name?: string } | null)?.name ?? 'School Administrator';
@@ -1826,7 +1852,7 @@ function StaffDashboardPage() {
       return;
     }
 
-    alert(`Upload queued for ${uploadedFile.name}. In the real app this would parse the register and validate each row.`);
+    showMessage(`Upload queued for ${uploadedFile.name}. Register import is not connected yet.`);
     event.target.value = '';
   };
 
@@ -1834,7 +1860,7 @@ function StaffDashboardPage() {
     event.preventDefault();
 
     if (!newUserForm.name.trim()) {
-      alert('Please enter a full name before saving the account.');
+      showMessage('Please enter a full name before saving the account.');
       return;
     }
 
@@ -1842,7 +1868,7 @@ function StaffDashboardPage() {
       const admissionNumber = newUserForm.admissionNumber.trim();
       const accessCode = newUserForm.accessCode.trim();
       if (!admissionNumber || !accessCode) {
-        alert('Parent accounts need an admission number and access code.');
+        showMessage('Parent accounts need an admission number and access code.');
         return;
       }
 
@@ -1855,13 +1881,14 @@ function StaffDashboardPage() {
         },
       ]);
       setNewUserForm(defaultUserForm);
+      showMessage('Parent account added.');
       return;
     }
 
     const email = newUserForm.email.trim();
     const password = newUserForm.password.trim();
     if (!email || !password) {
-      alert('Staff accounts need both email and password.');
+      showMessage('Staff accounts need both email and password.');
       return;
     }
 
@@ -1877,6 +1904,7 @@ function StaffDashboardPage() {
       nextAccount,
     ]);
     setNewUserForm(defaultUserForm);
+    showMessage('Staff account added.');
   };
 
   const handleApprovePromotion = (studentId: number) => {
@@ -2236,8 +2264,11 @@ function StaffDashboardPage() {
 }
 
 function App() {
+  const [message, setMessage] = useState('');
+
   return (
     <BrowserRouter>
+      <MessageModalContext.Provider value={setMessage}>
       <div className="app-shell">
         <header className="topbar">
           <h1>Cedar Model Schools Portal</h1>
@@ -2270,6 +2301,8 @@ function App() {
           </Routes>
         </main>
       </div>
+      <MessageModal message={message} onClose={() => setMessage('')} />
+      </MessageModalContext.Provider>
     </BrowserRouter>
   );
 }

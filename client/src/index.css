@@ -157,6 +157,67 @@ button {
   object-fit: contain;
 }
 
+.message-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(7, 29, 42, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.message-modal {
+  width: min(100%, 26rem);
+  padding: 2rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 1.25rem;
+  background: #fff;
+  color: #101828;
+  box-shadow: 0 24px 70px rgba(7, 29, 42, 0.24);
+  text-align: center;
+}
+
+.message-modal-mark {
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  margin: 0 auto 1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8f0f3;
+  color: #123f58;
+  font-weight: 700;
+}
+
+.message-modal h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.message-modal p {
+  margin: 0.7rem 0 1.5rem;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.message-modal-button {
+  min-width: 7rem;
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.75rem 1.2rem;
+  background: #0a2337;
+  color: #fff;
+  font-weight: 600;
+}
+
+.message-modal-button:hover {
+  background: #123f58;
+}
+
 .hero-icon {
   display: block;
   flex: 0 0 1rem;
