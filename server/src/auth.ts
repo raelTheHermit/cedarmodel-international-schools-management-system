@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import express from 'express';
 import { Pool } from 'pg';
 import { z } from 'zod';
+import { getDatabaseConfig } from './database-config.js';
 
 declare global {
   namespace Express {
@@ -200,35 +201,8 @@ export function buildRecentFailedAttemptsQuery(): string {
 }
 
 function createDefaultRepository(): AuthRepository {
-  const {
-    DB_HOST,
-    DB_PORT,
-    DB_USER,
-    DB_PASSWORD,
-    DB_NAME,
-    PGHOST,
-    PGPORT,
-    PGUSER,
-    PGPASSWORD,
-    PGDATABASE,
-  } = process.env;
-
-  const host = DB_HOST ?? PGHOST;
-  const port = Number(DB_PORT ?? PGPORT ?? 5432);
-  const user = DB_USER ?? PGUSER;
-  const password = DB_PASSWORD ?? PGPASSWORD ?? '';
-  const database = DB_NAME ?? PGDATABASE;
-
-  if (!host || !user || !database) {
-    throw new Error('Database environment variables are not configured.');
-  }
-
   const pool = new Pool({
-    host,
-    port,
-    user,
-    password,
-    database,
+    ...getDatabaseConfig(),
     max: 10,
   });
 

@@ -2,10 +2,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 
-dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(scriptDir, '../../.env') });
 
-const migrationDir = path.resolve(process.cwd(), 'migrations');
+const migrationDir = path.resolve(scriptDir, '../migrations');
 
 function splitSqlStatements(sql) {
   const statements = [];
@@ -49,35 +51,30 @@ function splitSqlStatements(sql) {
 }
 
 async function main() {
-  const {
-    DB_HOST,
-    DB_PORT,
-    DB_USER,
-    DB_PASSWORD,
-    DB_NAME,
-    PGHOST,
-    PGPORT,
-    PGUSER,
-    PGPASSWORD,
-    PGDATABASE,
-  } = process.env;
-
-  const host = DB_HOST ?? PGHOST;
-  const user = DB_USER ?? PGUSER;
-  const password = DB_PASSWORD ?? PGPASSWORD ?? '';
-  const database = DB_NAME ?? PGDATABASE;
-
-  if (!host || !user || !database) {
+  const databaseUrl = process.env.DATABASE_URL;
+  const host = process.env.DB_HOST ?? process.env.PGHOST;
+  const user = process.env.DB_USER ?? process.env.PGUSER;
+  const database = process.env.DB_NAME ?? process.env.PGDATABASE;
+  if (!databaseUrl && (!host || !user || !database)) {
     throw new Error('Database environment variables are not configured. Check your .env file.');
   }
 
-  const client = new pg.Client({
-    host,
-    port: Number(DB_PORT ?? PGPORT ?? 5432),
-    user,
-    password,
-    database,
-  });
+  const connection = databaseUrl
+    ? (() => {
+        const url = new URL(databaseUrl);
+        const requireSsl = url.searchParams.get('sslmode') === 'require' || process.env.DB_SSL === 'true';
+        url.searchParams.delete('sslmode');
+        return { connectionString: url.toString(), ssl: requireSsl ? { rejectUnauthorized: false } : undefined };
+      })()
+    : {
+        host,
+        port: Number(process.env.DB_PORT ?? process.env.PGPORT ?? 5432),
+        user,
+        password: process.env.DB_PASSWORD ?? process.env.PGPASSWORD ?? '',
+        database,
+        ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+      };
+  const client = new pg.Client(connection);
 
   await client.connect();
 
