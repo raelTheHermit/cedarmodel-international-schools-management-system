@@ -2,6 +2,17 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 type ApiSuccess = { message?: string; user?: Record<string, unknown> };
 
+/** Error thrown for non-2xx responses; `status` lets screens tell "incorrect" (401) from "locked" (403). */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 async function apiRequest<T = ApiSuccess>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
@@ -17,7 +28,7 @@ async function apiRequest<T = ApiSuccess>(path: string, options: RequestInit = {
 
   if (!response.ok) {
     const message = typeof payload === 'string' ? payload : payload?.message ?? 'Request failed';
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
 
   return payload as T;
@@ -35,6 +46,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  logout: () => apiRequest<{ message: string }>('/auth/logout', { method: 'POST' }),
 
   getStaffProfile: () => apiRequest<{ user: { email: string; role: 'superadmin' | 'teacher'; kind: 'staff' } }>('/staff/me'),
 
