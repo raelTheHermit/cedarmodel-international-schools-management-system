@@ -5,6 +5,7 @@ import { api } from './api';
 import brandIcon from './assets/icons/logo.png';
 import parentIcon from './assets/icons/parent login.svg';
 import adminIcon from './assets/icons/admin login.svg';
+import './extra.css'
 
 /* -------------------------------------------------------------------------- */
 /*  Branding / placeholder copy (single place to change)                       */
