@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
-import brandIcon from '../../assets/icons/logo.png';
-import lockIcon from '../../assets/icons/lock icon2.svg';
-import parentIcon from '../../assets/icons/parent login.svg';
-import adminIcon from '../../assets/icons/admin login.svg';
+import brandIcon from './assets/icons/logo.png';
+import lockIcon from './assets/icons/lock icon2.svg';
+import parentIcon from './assets/icons/parent login.svg';
+import adminIcon from './assets/icons/admin login.svg';
 
 function AssetIcon({ src, alt = '', className = '' }: { src: string; alt?: string; className?: string }) {
   return <img src={src} alt={alt} className={className} />;
