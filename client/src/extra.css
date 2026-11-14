@@ -232,6 +232,24 @@
 .sr-field.has-error input, .sr-field.has-error select { border-color: #ee9d96; }
 .sr-field-error { font-size: 12px; color: #d9776e; }
 
+/* ---------- Staff dashboard tabs ---------- */
+
+.admin-tabs { display: flex; gap: 4px; margin: 0 0 20px; border-bottom: 1px solid #e4e4de; overflow-x: auto; }
+.admin-tab {
+  margin-bottom: -1px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: #6b6b66;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.admin-tab:hover { color: #161614; }
+.admin-tab.active { color: #161614; font-weight: 600; border-bottom-color: #161614; }
+
 @media (max-width: 760px) {
   .student-form-grid, .sr-stat-grid, .stats-strip { grid-template-columns: 1fr; }
   .access-header-row { flex-direction: column; align-items: flex-start; }

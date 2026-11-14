@@ -1,11 +1,10 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import type { ChangeEvent, DragEvent, FormEvent, ReactNode } from 'react';
-import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import brandIcon from './assets/icons/logo.png';
 import parentIcon from './assets/icons/parent login.svg';
 import adminIcon from './assets/icons/admin login.svg';
-import './extra.css'
 
 /* -------------------------------------------------------------------------- */
 /*  Branding / placeholder copy (single place to change)                       */
@@ -370,6 +369,17 @@ function useParentSession() {
   const parent = (location.state as { parent?: ParentSession } | null)?.parent ?? DEMO_PARENT;
   const go = (path: string) => navigate(path, { state: { parent } });
   return { parent, go };
+}
+
+/** Staff identity carried through router state. UI only: the backend must enforce roles itself. */
+function useStaffSession() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { role?: Role; name?: string } | null;
+  const role: Role = state?.role ?? 'superadmin';
+  const name = state?.name ?? 'School Administrator';
+  const go = (path: string) => navigate(path, { state: { role, name } });
+  return { role, name, go };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1228,6 +1238,8 @@ const adminNavItems: Array<{ key: AdminNavKey; label: string; icon: IconName; pa
   { key: 'audit-log', label: 'Audit Log', icon: 'history', path: '/staff-dashboard' },
 ];
 
+const TEACHER_NAV: AdminNavKey[] = ['overview', 'results-upload', 'results-review'];
+
 function AdminShell({
   active,
   title,
@@ -1240,6 +1252,12 @@ function AdminShell({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const { role, name, go } = useStaffSession();
+  const items = role === 'teacher' ? adminNavItems.filter((item) => TEACHER_NAV.includes(item.key)) : adminNavItems;
+
+  if (!items.some((item) => item.key === active)) {
+    return <Navigate to="/staff-dashboard" replace state={{ role, name }} />;
+  }
 
   return (
     <div className="admin-portal-shell">
@@ -1254,12 +1272,12 @@ function AdminShell({
 
         <div className="admin-portal-section-label">Administration</div>
         <nav className="admin-portal-nav" aria-label="Admin navigation">
-          {adminNavItems.map((item) => (
+          {items.map((item) => (
             <button
               key={item.key}
               type="button"
               className={item.key === active ? 'admin-portal-item active' : 'admin-portal-item'}
-              onClick={() => navigate(item.path)}
+              onClick={() => go(item.path)}
             >
               <Icon name={item.icon} />
               {item.label}
@@ -1268,10 +1286,10 @@ function AdminShell({
         </nav>
 
         <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
+          <div className="admin-portal-user-avatar">{role === 'teacher' ? 'TE' : 'AO'}</div>
           <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
+            <strong>{role === 'teacher' ? 'Teacher' : 'Admin Office'}</strong>
+            <small>{role === 'teacher' ? 'Class access' : 'Administrator'}</small>
           </div>
         </div>
 
@@ -1313,7 +1331,7 @@ function AdminShell({
 /* -------------------------------------------------------------------------- */
 
 function StudentManagementPage({ initial = registerStudents }: { initial?: RegisterStudent[] }) {
-  const navigate = useNavigate();
+  const { go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
   const [students, setStudents] = useState(initial);
   const [search, setSearch] = useState('');
@@ -1466,7 +1484,7 @@ function StudentManagementPage({ initial = registerStudents }: { initial?: Regis
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 function StudentImportPage() {
-  const navigate = useNavigate();
+  const { go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
@@ -1593,7 +1611,7 @@ function FormField({
 }
 
 function StudentAddPage() {
-  const navigate = useNavigate();
+  const { go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
   const year = new Date().getFullYear();
   const [form, setForm] = useState({
@@ -1719,7 +1737,7 @@ function StudentAddPage() {
 /* -------------------------------------------------------------------------- */
 
 function AccessCodeManagementPage() {
-  const navigate = useNavigate();
+  const { go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All classes');
@@ -1854,7 +1872,7 @@ function AccessCodeManagementPage() {
 }
 
 function GenerateClassCodesPage() {
-  const navigate = useNavigate();
+  const { go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
   const classes = useMemo(() => [...new Set(registerStudents.map((student) => student.className))].sort(), []);
   const [className, setClassName] = useState(classes[0]);
@@ -1941,15 +1959,12 @@ function GenerateClassCodesPage() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Staff dashboard (no screenshot provided; logic unchanged)                  */
+/*  Staff dashboard overview (now inside AdminShell; logic unchanged)          */
 /* -------------------------------------------------------------------------- */
 
 function StaffDashboardPage() {
-  const navigate = useNavigate();
+  const { role, go: navigate } = useStaffSession();
   const showMessage = useMessageModal();
-  const location = useLocation();
-  const role: Role = (location.state as { role?: Role } | null)?.role ?? 'superadmin';
-  const fullName = (location.state as { name?: string } | null)?.name ?? 'School Administrator';
   const [students, setStudents] = useState<StudentRecord[]>(initialStudents);
   const [superadminAccounts, setSuperadminAccounts] = useState(seededSuperadmins);
   const [parentAccounts, setParentAccounts] = useState(seededParents);
@@ -2010,16 +2025,6 @@ function StaffDashboardPage() {
   const classOptions = ['All', ...new Set(students.map((student) => student.className))];
 
   const [newUserForm, setNewUserForm] = useState(defaultUserForm);
-
-  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = event.target.files?.[0];
-    if (!uploadedFile) {
-      return;
-    }
-
-    showMessage(`Upload queued for ${uploadedFile.name}. Register import is not connected yet.`);
-    event.target.value = '';
-  };
 
   const handleAddUser = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -2104,47 +2109,41 @@ function StaffDashboardPage() {
       ];
 
   return (
-    <div className="admin-dashboard-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-brand">
-          <span className="admin-brand-mark"><AssetIcon src={brandIcon} alt="" /></span>
-          <div>
-            <strong>MIRACLE SCHOOL</strong>
-            <small>{role === 'superadmin' ? 'Admin portal' : 'Teacher portal'}</small>
-          </div>
+    <AdminShell active="overview" title="Overview" contentClassName="admin-access-content">
+      <div className="admin-page-header-block access-header-row">
+        <div>
+          <div className="admin-breadcrumb">School dashboard</div>
+          <h1>{role === 'superadmin' ? 'School overview' : `Class dashboard · ${teacherClass}`}</h1>
         </div>
 
-        <nav className="admin-sidebar-nav" aria-label="Sidebar navigation">
-          {visibleSidebar.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={selectedNav === item.key ? 'admin-nav-item active' : 'admin-nav-item'}
-              onClick={() => setSelectedNav(item.key as typeof selectedNav)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <button type="button" className="admin-logout" onClick={() => navigate('/')}>Log out</button>
-      </aside>
-
-      <main className="admin-main-panel">
-        <header className="admin-topbar">
-          <div>
-            <p className="admin-kicker">School dashboard</p>
-            <h1>{role === 'superadmin' ? `School overview · ${fullName}` : `Class dashboard · ${teacherClass}`}</h1>
-          </div>
-
-          <div className="admin-top-actions">
-            <button type="button" className="admin-secondary" onClick={() => document.getElementById('student-upload')?.click()}>
+        {role === 'superadmin' && (
+          <div className="admin-header-actions">
+            <button type="button" className="admin-secondary-light btn-with-icon" onClick={() => navigate('/student-import')}>
+              <Icon name="upload" size={16} />
               Upload records
             </button>
-            <input id="student-upload" type="file" accept=".csv,.xlsx" hidden onChange={handleUpload} />
-            <button type="button" className="admin-primary" onClick={() => navigate('/student-add')}>Add student</button>
+            <button type="button" className="admin-primary-dark btn-with-icon" onClick={() => navigate('/student-add')}>
+              <Icon name="plus" size={16} />
+              Add student
+            </button>
           </div>
-        </header>
+        )}
+      </div>
+
+      <div className="admin-tabs" role="tablist" aria-label="Dashboard sections">
+        {visibleSidebar.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            role="tab"
+            aria-selected={selectedNav === item.key}
+            className={selectedNav === item.key ? 'admin-tab active' : 'admin-tab'}
+            onClick={() => setSelectedNav(item.key as typeof selectedNav)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
         <section className="admin-stats-grid">
           <article className="admin-stat-card">
@@ -2423,8 +2422,7 @@ function StaffDashboardPage() {
             </div>
           </section>
         )}
-      </main>
-    </div>
+    </AdminShell>
   );
 }
 
