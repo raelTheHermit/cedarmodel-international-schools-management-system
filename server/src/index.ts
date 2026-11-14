@@ -26,6 +26,12 @@ app.get('/api', (_req, res) => {
 
 app.use(createAuthApp());
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+// Vercel imports the Express app as a function. Keep the listener for local
+// development, where the server is started with `npm run dev` or `npm start`.
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
+
+export default app;

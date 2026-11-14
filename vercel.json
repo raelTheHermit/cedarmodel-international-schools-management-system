@@ -1,4 +1,5 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
     "client": {
       "root": "client",
@@ -11,13 +12,13 @@
   },
   "rewrites": [
     {
-      "source": "/server/(.*)",
+      "source": "/api/(.*)",
       "destination": {
         "service": "server"
       }
     },
     {
-      "source": "/client/(.*)",
+      "source": "/(.*)",
       "destination": {
         "service": "client"
       }
