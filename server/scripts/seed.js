@@ -129,19 +129,22 @@ async function main() {
       }
 
       await client.query(
-        'INSERT INTO staff_users (email, password_hash, role, active) VALUES ($1, $2, $3, true), ($4, $5, $6, true)',
+        'INSERT INTO staff_users (email, password_hash, role, active) VALUES ($1, $2, $3, true), ($4, $5, $6, true), ($7, $8, $9, true)',
         [
-          'admin@cedarmodel.local',
-          bcrypt.hashSync('Admin123!', 10),
-          'administrator',
-          'principal@cedarmodel.local',
-          bcrypt.hashSync('Principal123!', 10),
-          'principal',
+          'viceprincipal@cedarmodel.local',
+          bcrypt.hashSync('VicePrincipal123!', 10),
+          'superadmin',
+          'administrator@cedarmodel.local',
+          bcrypt.hashSync('SchoolAdmin123!', 10),
+          'superadmin',
+          'developer@cedarmodel.local',
+          bcrypt.hashSync('Developer123!', 10),
+          'superadmin',
         ],
       );
 
       console.log(`Seeded ${insertedClasses.length} classes, 1 term (${termId}), and 40 students.`);
-      console.log('Seeded 2 staff users with hashed passwords.');
+      console.log('Seeded 3 superadmin staff users with hashed passwords.');
     } finally {
       client.release();
     }
