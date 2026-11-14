@@ -1,10 +1,9 @@
-import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-import pg from 'pg';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+const bcrypt = require('bcryptjs');
+const dotenv = require('dotenv');
+const pg = require('pg');
+const path = require('node:path');
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptDir = __dirname;
 dotenv.config({ path: path.resolve(scriptDir, '../../.env') });
 
 const classNames = [

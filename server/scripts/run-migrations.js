@@ -1,10 +1,9 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import pg from 'pg';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
+const fs = require('node:fs/promises');
+const path = require('node:path');
+const pg = require('pg');
+const dotenv = require('dotenv');
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptDir = __dirname;
 dotenv.config({ path: path.resolve(scriptDir, '../../.env') });
 
 const migrationDir = path.resolve(scriptDir, '../migrations');
