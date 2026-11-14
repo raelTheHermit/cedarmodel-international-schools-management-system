@@ -1,10 +1,27 @@
 import { createContext, useContext, useMemo, useState } from 'react';
+import type { ChangeEvent, DragEvent, FormEvent, ReactNode } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api } from './api';
 import brandIcon from './assets/icons/logo.png';
-import lockIcon from './assets/icons/lock icon2.svg';
 import parentIcon from './assets/icons/parent login.svg';
 import adminIcon from './assets/icons/admin login.svg';
+
+/* -------------------------------------------------------------------------- */
+/*  Branding / placeholder copy (single place to change)                       */
+/* -------------------------------------------------------------------------- */
+
+// The admin screens in the designs say "Greenfield"; the parent screens and the
+// crest say "Miracle School". Both are kept as designed, but isolated here.
+const ADMIN_BRAND = 'Greenfield';
+const SCHOOL_CONTACT = {
+  name: 'Greenfield Academy',
+  email: 'office@greenfieldacademy.edu',
+  phone: '+234 803 555 0142',
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Message modal                                                              */
+/* -------------------------------------------------------------------------- */
 
 const MessageModalContext = createContext<(message: string) => void>(() => undefined);
 
@@ -29,9 +46,133 @@ function MessageModal({ message, onClose }: { message: string; onClose: () => vo
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Icons and marks                                                            */
+/* -------------------------------------------------------------------------- */
+
 function AssetIcon({ src, alt = '', className = '' }: { src: string; alt?: string; className?: string }) {
   return <img src={src} alt={alt} className={className} />;
 }
+
+type IconName =
+  | 'home' | 'users' | 'lock' | 'upload' | 'doc' | 'history' | 'search' | 'bell'
+  | 'plus' | 'logout' | 'eye' | 'eye-off' | 'alert' | 'arrow-left' | 'arrow-right' | 'clock';
+
+const iconPaths: Record<IconName, ReactNode> = {
+  home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
+  users: (
+    <>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.4c1.9.8 3 2.6 3 5.6" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  upload: <path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />,
+  doc: (
+    <>
+      <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M9.5 13h6M9.5 17h6M9.5 9h2" />
+    </>
+  ),
+  history: (
+    <>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5M12 8v4l3 2" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-4-4" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+      <path d="M10 21h4" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  logout: <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9" />,
+  eye: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="M3 3l18 18" />
+      <path d="M6.6 6.7C3.9 8.5 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 4-.9M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4" />
+      <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    </>
+  ),
+  alert: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v5M12 16.5v.01" />
+    </>
+  ),
+  'arrow-left': <path d="M19 12H5M11 6l-6 6 6 6" />,
+  'arrow-right': <path d="M5 12h14M13 6l6 6-6 6" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
+};
+
+function Icon({ name, size = 18, className = '' }: { name: IconName; size?: number; className?: string }) {
+  return (
+    <svg
+      className={`icon ${className}`.trim()}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {iconPaths[name]}
+    </svg>
+  );
+}
+
+/** The dark rounded square with a white dot used on auth screens and the results banner. */
+function BrandMark({ width = 36 }: { width?: number }) {
+  return (
+    <svg className="brand-dot" width={width} height={(width * 32) / 36} viewBox="0 0 36 32" aria-hidden="true">
+      <rect width="36" height="32" rx="9" fill="#161614" />
+      <circle cx="18" cy="16" r="6" fill="#fff" />
+    </svg>
+  );
+}
+
+function AdminLogo() {
+  return (
+    <svg className="admin-logo-svg" width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+      <rect width="38" height="38" rx="9" fill="#14263a" />
+      <rect x="9" y="19" width="4" height="10" rx="1" fill="#fff" opacity="0.7" />
+      <rect x="17" y="11" width="4" height="18" rx="1" fill="#fff" />
+      <rect x="25" y="16" width="4" height="13" rx="1" fill="#fff" opacity="0.85" />
+    </svg>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Types and mock data                                                        */
+/* -------------------------------------------------------------------------- */
 
 type Role = 'superadmin' | 'teacher';
 type AccountRole = 'superadmin' | 'teacher' | 'parent';
@@ -41,21 +182,6 @@ type StaffAccount = {
   password: string;
   role: Role;
 };
-
-function AuthSplitLayout({
-  children,
-  rightContent,
-}: {
-  children: React.ReactNode;
-  rightContent: React.ReactNode;
-}) {
-  return (
-    <div className="auth-shell">
-      <section className="auth-panel">{children}</section>
-      <aside className="auth-hero">{rightContent}</aside>
-    </div>
-  );
-}
 
 type StudentRecord = {
   id: number;
@@ -69,6 +195,29 @@ type StudentRecord = {
   eligibleForPromotion: boolean;
 };
 
+type ParentAccount = {
+  name: string;
+  studentName?: string;
+  admissionNumber: string;
+  accessCode: string;
+};
+
+/** What the parent screens need to know. Never includes the access code. */
+type ParentSession = {
+  name: string;
+  studentName?: string;
+  admissionNumber: string;
+};
+
+/** Student register as shown on the admin Student Management / Access Codes screens. */
+type RegisterStudent = {
+  name: string;
+  admissionNumber: string;
+  className: string;
+  active: boolean;
+  codeGeneratedOn: string | null;
+};
+
 const initialStudents: StudentRecord[] = [
   { id: 1, firstName: 'Ada', lastName: 'Okafor', admissionNumber: 'ADM-0001', className: 'Primary 4', parentPhone: '08031234567', active: true, attendance: 96, eligibleForPromotion: true },
   { id: 2, firstName: 'Femi', lastName: 'Bello', admissionNumber: 'ADM-0002', className: 'Primary 4', parentPhone: '08036543210', active: true, attendance: 91, eligibleForPromotion: true },
@@ -79,37 +228,104 @@ const initialStudents: StudentRecord[] = [
   { id: 7, firstName: 'Musa', lastName: 'Ibrahim', admissionNumber: 'ADM-0007', className: 'Primary 4', parentPhone: '08111223344', active: false, attendance: 82, eligibleForPromotion: true },
 ];
 
+const registerStudents: RegisterStudent[] = [
+  { name: 'Amina Okafor', admissionNumber: 'SCH/2025/0142', className: 'JSS 2A', active: true, codeGeneratedOn: '18 Mar 2026' },
+  { name: 'David Eze', admissionNumber: 'SCH/2025/0158', className: 'JSS 2A', active: true, codeGeneratedOn: '18 Mar 2026' },
+  { name: 'Nneka Ibe', admissionNumber: 'SCH/2025/0181', className: 'JSS 3B', active: true, codeGeneratedOn: '18 Mar 2026' },
+  { name: 'Tobi Martins', admissionNumber: 'SCH/2025/0204', className: 'SS 1A', active: true, codeGeneratedOn: null },
+  { name: 'Zainab Musa', admissionNumber: 'SCH/2025/0227', className: 'JSS 1C', active: true, codeGeneratedOn: null },
+  { name: 'Chidera Nwosu', admissionNumber: 'SCH/2024/0119', className: 'SS 2C', active: false, codeGeneratedOn: null },
+  { name: 'Fiyinfoluwa Adeyemi', admissionNumber: 'SCH/2025/0241', className: 'JSS 1C', active: true, codeGeneratedOn: null },
+  { name: 'Samuel Effiong', admissionNumber: 'SCH/2024/0096', className: 'SS 2C', active: true, codeGeneratedOn: null },
+];
+
+const CLASS_OPTIONS = ['Primary 4', 'Primary 5', 'JSS 1', 'JSS 1A', 'JSS 1C', 'JSS 2A', 'JSS 3B', 'SS 1A', 'SS 2C'];
+
 const seededSuperadmins: StaffAccount[] = [
   { name: 'Vice Principal', email: 'viceprincipal@cedarmodel.local', password: 'VicePrincipal123!', role: 'superadmin' },
   { name: 'School Administrator', email: 'administrator@cedarmodel.local', password: 'SchoolAdmin123!', role: 'superadmin' },
   { name: 'Developer', email: 'developer@cedarmodel.local', password: 'Developer123!', role: 'superadmin' },
 ];
 
-const seededParents = [
-  { name: 'Aisha Adebayo', admissionNumber: 'ADM-0001', accessCode: 'CODE1234' },
-  { name: 'Femi Bello', admissionNumber: 'ADM-0002', accessCode: 'CODE2345' },
-  { name: 'Tosin Adeyemi', admissionNumber: 'ADM-0003', accessCode: 'CODE3456' },
+const seededParents: ParentAccount[] = [
+  { name: 'Aisha Adebayo', studentName: 'Ada Okafor', admissionNumber: 'ADM-0001', accessCode: 'CODE1234' },
+  { name: 'Femi Bello', studentName: 'Femi Bello', admissionNumber: 'ADM-0002', accessCode: 'CODE2345' },
+  { name: 'Tosin Adeyemi', studentName: 'Tosin Adeyemi', admissionNumber: 'ADM-0003', accessCode: 'CODE3456' },
 ];
 
-const publishedParentResults: Record<string, Array<{ subject: string; score: string; grade: string }>> = {
-  'ADM-0001': [
-    { subject: 'English', score: '92', grade: 'A1' },
-    { subject: 'Mathematics', score: '88', grade: 'A1' },
-    { subject: 'Science', score: '90', grade: 'A1' },
-    { subject: 'Social Studies', score: '87', grade: 'A1' },
-  ],
-  'ADM-0002': [
-    { subject: 'English', score: '81', grade: 'B2' },
-    { subject: 'Mathematics', score: '86', grade: 'A2' },
-    { subject: 'Science', score: '79', grade: 'B3' },
-    { subject: 'Computer Studies', score: '90', grade: 'A1' },
-  ],
-  'ADM-0003': [
-    { subject: 'English', score: '76', grade: 'B3' },
-    { subject: 'Mathematics', score: '80', grade: 'B2' },
-    { subject: 'Biology', score: '82', grade: 'B2' },
-    { subject: 'Civic Education', score: '78', grade: 'B3' },
-  ],
+const DEMO_PARENT: ParentSession = {
+  name: 'Parent',
+  studentName: 'Amina Okafor',
+  admissionNumber: 'SCH/2025/0142',
+};
+
+/* Results ------------------------------------------------------------------ */
+
+type ResultRow = { subject: string; ca1: number; ca2: number; exam: number };
+
+// CA 1 and CA 2 are out of 20, the exam is out of 60 (see the results header).
+// For the seeded ADM-* accounts only a total was stored, so the split below is a
+// placeholder derivation. Replace with real CA/exam data from the API.
+const fromTotals = (rows: Array<[string, number]>): ResultRow[] => rows.map(([subject, total]) => {
+  const ca = Math.round(total * 0.2);
+  return { subject, ca1: ca, ca2: ca, exam: total - ca * 2 };
+});
+
+const defaultResults: ResultRow[] = [
+  { subject: 'English Language', ca1: 17, ca2: 16, exam: 54 },
+  { subject: 'General Mathematics', ca1: 18, ca2: 19, exam: 56 },
+  { subject: 'Biology', ca1: 16, ca2: 17, exam: 52 },
+  { subject: 'Chemistry', ca1: 17, ca2: 16, exam: 50 },
+  { subject: 'Physics', ca1: 15, ca2: 17, exam: 49 },
+  { subject: 'Further Mathematics', ca1: 14, ca2: 15, exam: 45 },
+  { subject: 'Economics', ca1: 16, ca2: 15, exam: 48 },
+  { subject: 'Civic Education', ca1: 18, ca2: 17, exam: 51 },
+  { subject: 'Computer Studies', ca1: 19, ca2: 18, exam: 55 },
+];
+
+const publishedParentResults: Record<string, ResultRow[]> = {
+  'ADM-0001': fromTotals([['English', 92], ['Mathematics', 88], ['Science', 90], ['Social Studies', 87]]),
+  'ADM-0002': fromTotals([['English', 81], ['Mathematics', 86], ['Science', 79], ['Computer Studies', 90]]),
+  'ADM-0003': fromTotals([['English', 76], ['Mathematics', 80], ['Biology', 82], ['Civic Education', 78]]),
+};
+
+const GRADE_SCALE = [
+  { grade: 'A', min: 80, label: '80-100' },
+  { grade: 'B', min: 70, label: '70-79' },
+  { grade: 'C', min: 60, label: '60-69' },
+  { grade: 'D', min: 50, label: '50-59' },
+  { grade: 'E', min: 40, label: '40-49' },
+  { grade: 'F', min: 0, label: '0-39' },
+];
+
+// F is the only failing band on the scale shown, so a credit is earned from E up.
+const CREDIT_PASS_MARK = 40;
+
+const gradeFor = (total: number) => (GRADE_SCALE.find((band) => total >= band.min) ?? GRADE_SCALE[GRADE_SCALE.length - 1]).grade;
+
+const performanceLabel = (average: number) => {
+  if (average >= 80) return 'Excellent performance';
+  if (average >= 70) return 'Very good performance';
+  if (average >= 60) return 'Good performance';
+  if (average >= 50) return 'Fair performance';
+  return 'Needs improvement';
+};
+
+// Placeholder report data until the API supplies it.
+const REPORT_META = {
+  className: 'SS 2 Science',
+  department: 'Science',
+  session: '2025/2026',
+  term: 'Second term',
+  classPosition: '3rd of 28',
+  schoolDays: 62,
+  daysPresent: 59,
+  conduct: 'Excellent',
+  punctuality: 'Very good',
+  house: 'Emerald',
+  club: 'Science & Technology',
+  teacherName: 'Mr T. Balogun',
+  nextTermBegins: '28 April 2026',
 };
 
 const defaultUserForm = {
@@ -121,6 +337,116 @@ const defaultUserForm = {
   accessCode: '',
 };
 
+/* -------------------------------------------------------------------------- */
+/*  Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const initialsOf = (name: string) => name
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((part) => part[0])
+  .slice(0, 2)
+  .join('')
+  .toUpperCase();
+
+const greeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+/** A rejected fetch surfaces as a TypeError; anything else is treated as bad credentials. */
+const loginFailureMessage = (error: unknown, credentialMessage: string) => (
+  error instanceof TypeError
+    ? 'We couldn’t reach the server. Check your connection and try again.'
+    : credentialMessage
+);
+
+function useParentSession() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const parent = (location.state as { parent?: ParentSession } | null)?.parent ?? DEMO_PARENT;
+  const go = (path: string) => navigate(path, { state: { parent } });
+  return { parent, go };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Auth screens                                                               */
+/* -------------------------------------------------------------------------- */
+
+function AuthSplitLayout({
+  children,
+  rightContent,
+}: {
+  children: ReactNode;
+  rightContent: ReactNode;
+}) {
+  return (
+    <div className="auth-shell">
+      <section className="auth-panel">{children}</section>
+      <aside className="auth-hero">{rightContent}</aside>
+    </div>
+  );
+}
+
+type FormErrorState = { message: string; fields: string[] };
+
+function AuthField({
+  label,
+  name,
+  type = 'text',
+  value,
+  onChange,
+  invalid = false,
+  autoComplete,
+}: {
+  label: string;
+  name: string;
+  type?: 'text' | 'email' | 'password';
+  value: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  autoComplete?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const isSecret = type === 'password';
+
+  return (
+    <label className={invalid ? 'auth-field is-invalid' : 'auth-field'}>
+      <span className="auth-field-label">{label}</span>
+      <input
+        name={name}
+        type={isSecret && visible ? 'text' : type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        aria-invalid={invalid || undefined}
+      />
+      {isSecret && (
+        <button
+          type="button"
+          className="auth-field-toggle"
+          onClick={() => setVisible((current) => !current)}
+          aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          aria-pressed={visible}
+        >
+          <Icon name={visible ? 'eye-off' : 'eye'} size={18} />
+        </button>
+      )}
+    </label>
+  );
+}
+
+function AuthError({ message }: { message: string }) {
+  return (
+    <p className="auth-error" role="alert">
+      <Icon name="alert" size={16} />
+      <span>{message}</span>
+    </p>
+  );
+}
+
 function LandingPage() {
   const navigate = useNavigate();
 
@@ -129,7 +455,7 @@ function LandingPage() {
       rightContent={(
         <>
           <div className="auth-hero-badge">
-            <AssetIcon src={lockIcon} className="hero-icon" alt="" />
+            <Icon name="lock" size={14} className="hero-icon" />
             <span>Secure school access</span>
           </div>
           <h2>One portal.<br />The right access for you.</h2>
@@ -137,12 +463,7 @@ function LandingPage() {
         </>
       )}
     >
-      <div className="role-select-header">
-        <button type="button" className="portal-back-link" onClick={() => navigate('/')} aria-label="Choose access type">
-          Choose access type
-        </button>
-        <div className="brand-mark dark" aria-hidden="true"><AssetIcon src={brandIcon} alt="" /></div>
-      </div>
+      <div className="auth-logo"><BrandMark /></div>
 
       <div className="brand-block">
         <div className="brand-name">MIRACLE SCHOOLS</div>
@@ -160,7 +481,7 @@ function LandingPage() {
             <span className="portal-tag">Parent login</span>
             <small>View your child’s current results securely.</small>
           </div>
-          <span className="portal-arrow">→</span>
+          <span className="portal-arrow"><Icon name="arrow-right" size={16} /></span>
         </button>
 
         <button type="button" className="portal-choice" onClick={() => navigate('/admin-login')}>
@@ -169,7 +490,7 @@ function LandingPage() {
             <span className="portal-tag">Admin login</span>
             <small>Authorised school administrators only.</small>
           </div>
-          <span className="portal-arrow">→</span>
+          <span className="portal-arrow"><Icon name="arrow-right" size={16} /></span>
         </button>
       </div>
     </AuthSplitLayout>
@@ -178,24 +499,46 @@ function LandingPage() {
 
 function StaffLoginPage() {
   const navigate = useNavigate();
-  const showMessage = useMessageModal();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<FormErrorState | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const email = String(formData.get('email') ?? '').trim().toLowerCase();
-    const password = String(formData.get('password') ?? '').trim();
+    if (submitting) return;
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) {
+      setError({ message: 'Enter a valid email address.', fields: ['email'] });
+      return;
+    }
+
+    if (cleanPassword.length < 8) {
+      setError({ message: 'Password must contain at least 8 characters.', fields: ['password'] });
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
 
     try {
-      const result = await api.loginStaff({ email, password });
+      const result = await api.loginStaff({ email: cleanEmail, password: cleanPassword });
       navigate('/staff-dashboard', {
         state: {
           role: result.user.role,
           name: result.user.email,
         },
       });
-    } catch (error) {
-      showMessage(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid school account.');
+    } catch (caught) {
+      setError({
+        message: loginFailureMessage(caught, 'The email address or password is incorrect.'),
+        fields: ['email', 'password'],
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -204,7 +547,7 @@ function StaffLoginPage() {
       rightContent={(
         <>
           <div className="auth-hero-badge">
-            <AssetIcon src={lockIcon} className="hero-icon" alt="" />
+            <Icon name="lock" size={14} className="hero-icon" />
             <span>Authorised administrators</span>
           </div>
           <h2>Manage results.<br />Support every learner.</h2>
@@ -212,13 +555,14 @@ function StaffLoginPage() {
         </>
       )}
     >
-      <div className="role-select-header">
-        <button type="button" className="portal-back-link" onClick={() => navigate('/')} aria-label="Choose access type">
-          Choose access type
+      <div className="auth-top-row">
+        <button type="button" className="portal-back-link" onClick={() => navigate('/')}>
+          <Icon name="arrow-left" size={12} />
+          <span>Choose access type</span>
         </button>
       </div>
 
-      <div className="brand-mark dark login-mark" aria-hidden="true"><AssetIcon src={brandIcon} alt="" /></div>
+      <div className="auth-logo"><BrandMark /></div>
       <div className="brand-block">
         <div className="brand-name">MIRACLE SCHOOLS</div>
       </div>
@@ -228,19 +572,29 @@ function StaffLoginPage() {
         <p>Sign in with your authorised school administrator account.</p>
       </div>
 
-      <form className="login-form" onSubmit={handleSubmit}>
-        <label>
-          <span>Email address</span>
-          <input type="email" name="email" placeholder="Email address" />
-        </label>
-        <label>
-          <span>Password</span>
-          <div className="password-field">
-            <input type="password" name="password" placeholder="Password" />
-            <span className="password-toggle" aria-hidden="true">◉</span>
-          </div>
-        </label>
-        <button type="submit" className="primary-login-button">Log in</button>
+      <form className="login-form auth-form" onSubmit={handleSubmit} noValidate>
+        <AuthField
+          label="Email address"
+          name="email"
+          type="email"
+          value={email}
+          onChange={setEmail}
+          autoComplete="username"
+          invalid={error?.fields.includes('email')}
+        />
+        <AuthField
+          label="Password"
+          name="password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          invalid={error?.fields.includes('password')}
+        />
+        {error && <AuthError message={error.message} />}
+        <button type="submit" className="primary-login-button" disabled={submitting}>
+          {submitting ? 'Signing in…' : 'Log in'}
+        </button>
       </form>
 
       <p className="access-note">Access is limited to authorised administrators.<br />Contact the school if you need assistance.</p>
@@ -248,27 +602,68 @@ function StaffLoginPage() {
   );
 }
 
+function TermChart() {
+  return (
+    <svg className="term-chart" viewBox="0 0 232 84" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="term-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M0 66 C32 66 52 64 84 44 S150 6 232 6 V84 H0 Z" fill="url(#term-fill)" />
+      <path
+        d="M0 66 C32 66 52 64 84 44 S150 6 232 6"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
 function ParentLoginPage() {
   const navigate = useNavigate();
-  const showMessage = useMessageModal();
+  const [admissionNumber, setAdmissionNumber] = useState('');
+  const [accessCode, setAccessCode] = useState('');
+  const [error, setError] = useState<FormErrorState | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const admissionNumber = String(formData.get('admissionNumber') ?? '').trim();
-    const accessCode = String(formData.get('accessCode') ?? '').trim();
+    if (submitting) return;
+
+    const cleanAdmission = admissionNumber.trim();
+    const cleanCode = accessCode.trim();
+
+    if (!cleanAdmission || !cleanCode) {
+      setError({
+        message: 'Enter your admission number and access code.',
+        fields: [!cleanAdmission && 'admissionNumber', !cleanCode && 'accessCode'].filter(Boolean) as string[],
+      });
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
 
     try {
-      const result = await api.loginParent({ admissionNumber, accessCode });
-      const selectedParent = seededParents.find((account) => account.admissionNumber === result.user.admissionNumber) ?? {
-        name: 'Parent',
-        admissionNumber: result.user.admissionNumber,
-        accessCode,
-      };
+      const result = await api.loginParent({ admissionNumber: cleanAdmission, accessCode: cleanCode });
+      const match = seededParents.find((account) => account.admissionNumber === result.user.admissionNumber);
+      // Deliberately leave the access code out of router state (it ends up in history.state).
+      const session: ParentSession = match
+        ? { name: match.name, studentName: match.studentName, admissionNumber: match.admissionNumber }
+        : { name: 'Parent', admissionNumber: result.user.admissionNumber };
 
-      navigate('/parent-dashboard', { state: { parent: selectedParent } });
-    } catch (error) {
-      showMessage(error instanceof Error ? error.message : 'Invalid credentials. Please use a valid parent account.');
+      navigate('/parent-dashboard', { state: { parent: session } });
+    } catch (caught) {
+      setError({
+        message: loginFailureMessage(caught, 'The admission number or access code is incorrect.'),
+        fields: ['admissionNumber', 'accessCode'],
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -276,28 +671,36 @@ function ParentLoginPage() {
     <div className="parent-login-shell">
       <section className="parent-login-panel">
         <button type="button" className="parent-login-back" onClick={() => navigate('/')}>
-          ← Choose access type
+          <Icon name="arrow-left" size={14} />
+          <span>Choose access type</span>
         </button>
 
-        <div className="parent-login-brand" aria-hidden="true"><AssetIcon src={brandIcon} alt="" /></div>
+        <div className="auth-logo"><BrandMark /></div>
 
         <h1 className="parent-login-title">Parent login</h1>
 
-        <form className="parent-login-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Admission number</span>
-            <input type="text" name="admissionNumber" placeholder="Enter admission number" />
-          </label>
-
-          <label>
-            <span>Access code</span>
-            <div className="password-lockup">
-              <input type="password" name="accessCode" placeholder="Enter access code" />
-              <span className="eye-icon" aria-hidden="true">◌</span>
-            </div>
-          </label>
-
-          <button type="submit" className="parent-login-button">Log in</button>
+        <form className="parent-login-form auth-form" onSubmit={handleSubmit} noValidate>
+          <AuthField
+            label="Admission number"
+            name="admissionNumber"
+            value={admissionNumber}
+            onChange={setAdmissionNumber}
+            autoComplete="username"
+            invalid={error?.fields.includes('admissionNumber')}
+          />
+          <AuthField
+            label="Access code"
+            name="accessCode"
+            type="password"
+            value={accessCode}
+            onChange={setAccessCode}
+            autoComplete="current-password"
+            invalid={error?.fields.includes('accessCode')}
+          />
+          {error && <AuthError message={error.message} />}
+          <button type="submit" className="parent-login-button" disabled={submitting}>
+            {submitting ? 'Signing in…' : 'Log in'}
+          </button>
         </form>
 
         <div className="parent-disclaimer">
@@ -310,7 +713,7 @@ function ParentLoginPage() {
         <h2>Your child’s results, safely in your hands.</h2>
 
         <div className="hero-label-row">
-          <span className="lock-mini"><AssetIcon src={lockIcon} alt="" /></span>
+          <span className="lock-mini"><Icon name="lock" size={13} /></span>
           <span>Secure parent access</span>
         </div>
 
@@ -319,8 +722,8 @@ function ParentLoginPage() {
           <div className="term-card-title">Second term</div>
           <div className="term-card-meta">• Published</div>
 
-          <div className="term-graph" aria-hidden="true">
-            <span className="curve" />
+          <div className="term-graph">
+            <TermChart />
           </div>
 
           <div className="term-scale">
@@ -334,956 +737,533 @@ function ParentLoginPage() {
   );
 }
 
-function ParentDashboardPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const parent = (location.state as { parent?: { name: string; admissionNumber: string } } | null)?.parent;
-  const studentName = 'Amina Okafor';
-  const admissionNumber = parent?.admissionNumber ?? 'SCH/2025/0142';
-  const [status] = useState<'published' | 'processing' | 'error'>('published');
+/* -------------------------------------------------------------------------- */
+/*  Parent portal                                                              */
+/* -------------------------------------------------------------------------- */
 
-  const studentInfo = [
-    { label: 'Admission number', value: admissionNumber },
-    { label: 'Class', value: 'JSS 2A' },
-    { label: 'Academic session', value: '2025/2026' },
-    { label: 'Current term', value: 'Second term' },
-  ];
+function ParentShell({
+  active,
+  title,
+  children,
+}: {
+  active: 'overview' | 'results';
+  title: string;
+  children: ReactNode;
+}) {
+  const navigate = useNavigate();
+  const { parent, go } = useParentSession();
+  const initials = initialsOf(parent.studentName ?? parent.name);
 
   return (
     <div className="parent-portal-shell">
       <aside className="parent-sidebar">
         <div className="parent-brand">
-          <div className="brand-badge"><AssetIcon src={brandIcon} alt="" /></div>
-          <div className="brand-copy">
-            <span className="brand-title">MIRACLE SCHOOL</span>
-            <small>Parent Portal</small>
-          </div>
+          <AssetIcon src={brandIcon} alt="Miracle School" className="parent-brand-logo" />
         </div>
 
         <nav className="parent-nav" aria-label="Parent navigation">
-          <button type="button" className="parent-nav-item active">
-            <span className="nav-icon">⌂</span>
+          <button
+            type="button"
+            className={active === 'overview' ? 'parent-nav-item active' : 'parent-nav-item'}
+            onClick={() => go('/parent-dashboard')}
+          >
+            <Icon name="home" />
             Overview
           </button>
-          <button type="button" className="parent-nav-item" onClick={() => navigate('/parent-results')}>
-            <span className="nav-icon">▣</span>
+          <button
+            type="button"
+            className={active === 'results' ? 'parent-nav-item active' : 'parent-nav-item'}
+            onClick={() => go('/parent-results')}
+          >
+            <Icon name="doc" />
             Results
           </button>
         </nav>
 
         <button type="button" className="parent-logout" onClick={() => navigate('/')}>
-          <span>↩</span>
+          <Icon name="logout" />
           Log out
         </button>
       </aside>
 
       <main className="parent-main-panel">
         <header className="parent-topbar">
-          <div className="parent-portal-label">Parent Portal</div>
-          <button type="button" className="parent-avatar" aria-label="User profile">AO</button>
+          <div className="topbar-heading">
+            <small className="parent-portal-label">Parent Portal</small>
+            <span className="topbar-title">{title}</span>
+          </div>
+          <button type="button" className="parent-avatar" aria-label="User profile">{initials}</button>
         </header>
 
-        <div className="parent-page-content">
-          <h1 className="parent-title">Good morning, {parent?.name ? `${parent.name.split(' ')[0]}'s parent.` : 'Amina\'s parent.'}</h1>
-          <p className="parent-subtitle">Here is the latest information for the current academic term.</p>
+        {children}
+      </main>
+    </div>
+  );
+}
 
-          <div className="parent-grid">
-            <div className="parent-main-column">
-              <section className="parent-card form-card">
-                <div className="card-header compact-header">
-                  <span>Student Information</span>
-                  <span className="inline-tag">Student profile</span>
-                </div>
+function OverviewSkeleton() {
+  return (
+    <div className="parent-page-content" aria-busy="true" aria-label="Loading overview">
+      <div className="skeleton skeleton-line skeleton-eyebrow" />
+      <div className="skeleton skeleton-title" />
+      <div className="skeleton skeleton-line skeleton-sub" />
 
-                <div className="student-name-row">{studentName}</div>
+      <div className="parent-grid">
+        <div className="parent-main-column">
+          <section className="parent-card skeleton-card">
+            <div className="skeleton-split">
+              <div className="skeleton-stack">
+                <div className="skeleton skeleton-line skeleton-short" />
+                <div className="skeleton skeleton-block" />
+              </div>
+              <div className="skeleton skeleton-pill" />
+            </div>
+            {[0, 1, 2, 3].map((row) => (
+              <div key={row} className="skeleton-split skeleton-row">
+                <div className="skeleton skeleton-line skeleton-short" />
+                <div className="skeleton skeleton-line skeleton-short" />
+              </div>
+            ))}
+          </section>
 
-                <div className="data-list">
-                  {studentInfo.map((item) => (
-                    <div key={item.label} className="data-row">
-                      <span className="data-label">{item.label}</span>
-                      <span className="data-value">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
+          <section className="parent-card skeleton-card">
+            <div className="skeleton-split">
+              <div className="skeleton-stack">
+                <div className="skeleton skeleton-line skeleton-short" />
+                <div className="skeleton skeleton-block" />
+              </div>
+              <div className="skeleton skeleton-pill" />
+            </div>
+            <div className="skeleton-split skeleton-row">
+              <div className="skeleton skeleton-circle" />
+              <div className="skeleton-stack skeleton-grow">
+                <div className="skeleton skeleton-line" />
+                <div className="skeleton skeleton-line" />
+                <div className="skeleton skeleton-line skeleton-short" />
+              </div>
+            </div>
+          </section>
+        </div>
 
-              <section className="parent-card results-panel">
-                <div className="card-header compact-header">
-                  <span>Current Term</span>
-                  {status === 'published' && <span className="status-pill success">Published</span>}
-                  {status === 'processing' && <span className="status-pill warning">Awaiting publication</span>}
-                  {status === 'error' && <span className="status-pill error">Unavailable</span>}
-                </div>
+        <aside className="parent-side-column">
+          <div className="status-card dark-card skeleton-card">
+            <div className="skeleton skeleton-line skeleton-short" />
+            <div className="skeleton skeleton-block" />
+            <div className="skeleton skeleton-line" />
+          </div>
+          <div className="help-card skeleton-card">
+            <div className="skeleton skeleton-line skeleton-short" />
+            <div className="skeleton skeleton-block" />
+            <div className="skeleton skeleton-line" />
+            <div className="skeleton skeleton-block" />
+          </div>
+          <div className="help-card skeleton-card">
+            <div className="skeleton-split">
+              <div className="skeleton skeleton-circle" />
+              <div className="skeleton-stack skeleton-grow">
+                <div className="skeleton skeleton-line skeleton-short" />
+                <div className="skeleton skeleton-line" />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
 
-                <h2 className="results-title">Second term results</h2>
+type OverviewStatus = 'loading' | 'published' | 'processing' | 'error';
 
-                {status === 'published' && (
-                  <div className="result-cta-box">
-                    <div className="callout-text">The current-term report card is ready.</div>
-                    <p>
-                      View the school-issued secondary report for Amina Okafor. This portal provides read-only access.
-                    </p>
-                    <button type="button" className="dark-button" onClick={() => navigate('/parent-results')}>
-                      View results
-                      <span aria-hidden="true">→</span>
-                    </button>
+function ParentDashboardPage({ status = 'published' }: { status?: OverviewStatus }) {
+  const { parent, go } = useParentSession();
+  const studentName = parent.studentName ?? 'Student record';
+  const firstName = parent.studentName?.split(' ')[0];
+  const admissionNumber = parent.admissionNumber;
+
+  const studentInfo = [
+    { label: 'Admission number', value: admissionNumber },
+    { label: 'Class', value: 'JSS 2A' },
+    { label: 'Academic session', value: REPORT_META.session },
+    { label: 'Current term', value: REPORT_META.term },
+  ];
+
+  if (status === 'loading') {
+    return (
+      <ParentShell active="overview" title="Overview">
+        <OverviewSkeleton />
+      </ParentShell>
+    );
+  }
+
+  const statusLabel = status === 'published' ? 'Published' : status === 'processing' ? 'Awaiting publication' : 'Unavailable';
+
+  return (
+    <ParentShell active="overview" title="Overview">
+      <div className="parent-page-content">
+        <h1 className="parent-title">{firstName ? `${greeting()}, ${firstName}’s parent.` : `${greeting()}.`}</h1>
+        <p className="parent-subtitle">Here is the latest information for the current academic term.</p>
+
+        <div className="parent-grid">
+          <div className="parent-main-column">
+            <section className="parent-card form-card">
+              <div className="card-header compact-header">
+                <span>Student Information</span>
+                <span className="inline-tag">Student profile</span>
+              </div>
+
+              <div className="student-name-row">{studentName}</div>
+
+              <div className="data-list">
+                {studentInfo.map((item) => (
+                  <div key={item.label} className="data-row">
+                    <span className="data-label">{item.label}</span>
+                    <span className="data-value">{item.value}</span>
                   </div>
-                )}
+                ))}
+              </div>
+            </section>
 
-                {status === 'processing' && (
-                  <div className="result-cta-box processing">
-                    <div className="processing-icon">◌</div>
+            <section className="parent-card results-panel">
+              <div className="card-header compact-header">
+                <span>Current Term</span>
+                {status === 'published' && <span className="status-pill success">Published</span>}
+                {status === 'processing' && <span className="status-pill warning">Awaiting publication</span>}
+                {status === 'error' && <span className="status-pill error">Unavailable</span>}
+              </div>
+
+              <h2 className="results-title">{REPORT_META.term} results</h2>
+
+              {status === 'published' && (
+                <div className="result-cta-box">
+                  <div className="callout-text">The current-term report card is ready.</div>
+                  <p>
+                    View the school-issued secondary report for {studentName}. This portal provides read-only access.
+                  </p>
+                  <button type="button" className="dark-button" onClick={() => go('/parent-results')}>
+                    View results
+                    <Icon name="arrow-right" size={16} />
+                  </button>
+                </div>
+              )}
+
+              {status === 'processing' && (
+                <div className="result-cta-box processing">
+                  <div className="processing-icon"><Icon name="clock" size={20} /></div>
+                  <div className="processing-copy">
                     <div className="callout-text">Results are being processed.</div>
                     <p>
                       The current-term report is awaiting publication. It will become available here only after the school publishes it.
                     </p>
                   </div>
-                )}
-
-                {status === 'error' && (
-                  <div className="error-box">
-                    <div className="error-badge">!</div>
-                    <div className="callout-text error-title">Unable to load dashboard</div>
-                    <p>
-                      We couldn’t retrieve the dashboard information. Check your connection and try again.
-                    </p>
-                    <button type="button" className="dark-button small-button" onClick={() => navigate('/parent-dashboard')}>
-                      Retry
-                    </button>
-                  </div>
-                )}
-              </section>
-            </div>
-
-            <aside className="parent-side-column">
-              <div className="status-card dark-card">
-                <h3>Results Status</h3>
-                <div className="status-line">
-                  <span className="dot" />
-                  <span>{status === 'published' ? 'Published' : status === 'processing' ? 'Awaiting publication' : 'Unavailable'}</span>
                 </div>
-                <p>
-                  {status === 'published'
-                    ? 'Status for second term, 2025/2026 academic session.'
-                    : status === 'processing'
-                      ? 'Status for second term, 2025/2026 academic session.'
-                      : 'Status for second term, 2025/2026 academic session.'}
-                </p>
-              </div>
+              )}
 
-              <div className="help-card">
-                <h4>Need Assistance?</h4>
-                <div className="help-title">Contact the school</div>
-                <p>For questions about access or results, contact the Greenfield Academy office directly.</p>
-                <div className="contact-box">office@greenfieldacademy.edu</div>
-                <div className="contact-box">+234 803 555 0142</div>
-              </div>
-
-              <div className="help-card secure-card">
-                <div className="secure-header">
-                  <span className="lock-icon"><AssetIcon src={lockIcon} alt="" /></span>
-                  <span>Secure Access</span>
+              {status === 'error' && (
+                <div className="error-box">
+                  <div className="error-badge">!</div>
+                  <div className="callout-text error-title">Unable to load dashboard</div>
+                  <p>
+                    We couldn’t retrieve the dashboard information. Check your connection and try again.
+                  </p>
+                  <button type="button" className="dark-button small-button" onClick={() => go('/parent-dashboard')}>
+                    Retry
+                  </button>
                 </div>
-                <p>This account is read-only. Unpublished results remain securely restricted.</p>
-              </div>
-            </aside>
+              )}
+            </section>
           </div>
+
+          <aside className="parent-side-column">
+            <div className="status-card dark-card">
+              <h3>Results Status</h3>
+              <div className="status-line">
+                <span className="dot" />
+                <span>{statusLabel}</span>
+              </div>
+              <p>Status for {REPORT_META.term.toLowerCase()}, {REPORT_META.session} academic session.</p>
+            </div>
+
+            <div className="help-card">
+              <h4>Need Assistance?</h4>
+              <div className="help-title">Contact the school</div>
+              <p>For questions about access or results, contact the {SCHOOL_CONTACT.name} office directly.</p>
+              <div className="contact-box">{SCHOOL_CONTACT.email}</div>
+              <div className="contact-box">{SCHOOL_CONTACT.phone}</div>
+            </div>
+
+            <div className="help-card secure-card">
+              <div className="secure-header">
+                <span className="lock-icon"><Icon name="lock" size={16} /></span>
+                <span>Secure Access</span>
+              </div>
+              <p>This account is read-only. Unpublished results remain securely restricted.</p>
+            </div>
+          </aside>
         </div>
-      </main>
-    </div>
+      </div>
+    </ParentShell>
   );
 }
 
-function ParentResultsPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const parent = (location.state as { parent?: { name: string; admissionNumber: string } } | null)?.parent;
-  const studentName = parent?.name ?? 'Amina Okafor';
-  const admissionNumber = parent?.admissionNumber ?? 'SCH/2025/0142';
-  const results = publishedParentResults[admissionNumber] ?? [
-    { subject: 'English Language', score: '87', grade: 'A' },
-    { subject: 'General Mathematics', score: '93', grade: 'A' },
-    { subject: 'Biology', score: '85', grade: 'A' },
-    { subject: 'Chemistry', score: '83', grade: 'A' },
-    { subject: 'Physics', score: '81', grade: 'A' },
-    { subject: 'Further Mathematics', score: '74', grade: 'B' },
-    { subject: 'Economics', score: '79', grade: 'B' },
-    { subject: 'Civic Education', score: '86', grade: 'A' },
-    { subject: 'Computer Studies', score: '92', grade: 'A' },
-  ];
+function ParentResultsPage({ status = 'published' }: { status?: 'published' | 'processing' }) {
+  const { parent, go } = useParentSession();
+  const studentName = parent.studentName ?? 'Student';
+  const firstName = studentName.split(' ')[0];
+  const admissionNumber = parent.admissionNumber;
+  const published = status === 'published';
+
+  // Unpublished results are never computed or rendered.
+  const rows = useMemo(() => (published ? (publishedParentResults[admissionNumber] ?? defaultResults) : [])
+    .map((row) => {
+      const total = row.ca1 + row.ca2 + row.exam;
+      return { ...row, total, grade: gradeFor(total) };
+    }), [published, admissionNumber]);
+
+  const average = rows.length ? rows.reduce((sum, row) => sum + row.total, 0) / rows.length : 0;
+  const highest = rows.length ? Math.max(...rows.map((row) => row.total)) : 0;
+  const credits = rows.filter((row) => row.total >= CREDIT_PASS_MARK).length;
+  const absent = REPORT_META.schoolDays - REPORT_META.daysPresent;
+  const attendanceRate = ((REPORT_META.daysPresent / REPORT_META.schoolDays) * 100).toFixed(1);
 
   return (
-    <div className="results-shell">
-      <div className="results-sidebar">
-        <div className="results-brand">
-          <div className="results-brand-mark">MS</div>
-          <div className="results-brand-copy">
-            <div className="results-brand-title">MIRACLE SCHOOL</div>
-            <small>School Results</small>
-          </div>
-        </div>
-
-        <nav className="results-nav" aria-label="Results navigation">
-          <button type="button" className="results-nav-item active" onClick={() => navigate('/parent-dashboard')}>
-            <span>◫</span> Overview
-          </button>
-          <button type="button" className="results-nav-item" onClick={() => navigate('/parent-results')}>
-            <span>▣</span> Results
-          </button>
-        </nav>
-
-        <button type="button" className="results-logout" onClick={() => navigate('/')}>
-          <span>↩</span> Log out
+    <ParentShell active="results" title="Results">
+      <div className="results-content">
+        <button type="button" className="results-back-link" onClick={() => go('/parent-dashboard')}>
+          <Icon name="arrow-left" size={14} />
+          <span>Back to overview</span>
         </button>
-      </div>
 
-      <div className="results-main">
-        <header className="results-topbar">
-          <button type="button" className="results-back-link" onClick={() => navigate('/parent-dashboard')}>
-            ← Back to overview
-          </button>
-          <button type="button" className="results-user-avatar" aria-label="Profile">AO</button>
-        </header>
-
-        <div className="results-content">
-          <section className="result-banner">
-            <div className="result-banner-left">
-              <div className="result-brand-inline">MIRACLE SCHOOLS · SENIOR SECONDARY</div>
-              <div className="result-title-row">
-                <span className="result-title-icon" aria-hidden="true"><AssetIcon src={brandIcon} alt="" /></span>
-                <h2>Academic result statement</h2>
-              </div>
-              <div className="result-subtitle">Second term · 2025/2026 session</div>
+        <section className="result-banner">
+          <div className="result-banner-left">
+            <div className="result-brand-inline">MIRACLE SCHOOLS · SENIOR SECONDARY</div>
+            <div className="result-title-row">
+              <span className="result-title-icon" aria-hidden="true"><BrandMark width={48} /></span>
+              <h2>{published ? 'Academic result statement' : 'Current-term results'}</h2>
             </div>
-            <div className="result-banner-right">
-              <span className="verified-dot" aria-hidden="true">◉</span>
-              Official view only record
-            </div>
-          </section>
-
-          <section className="result-meta-grid">
-            <div className="meta-entry">
-              <span>Student</span>
-              <strong>{studentName}</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Admission number</span>
-              <strong>{admissionNumber}</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Class</span>
-              <strong>SS 2 Science</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Department</span>
-              <strong>Science</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Academic session</span>
-              <strong>2025/2026</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Term</span>
-              <strong>Second term</strong>
-            </div>
-          </section>
-
-          <section className="score-panel">
-            <div className="score-panel-header">
-              <span>Subject result breakdown</span>
-              <span>CA 1, CA 2, Exam, Total</span>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Subject</th>
-                    <th>CA 1</th>
-                    <th>CA 2</th>
-                    <th>Exam</th>
-                    <th>Total</th>
-                    <th>Grade</th>
-                    <th>Credit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((result) => (
-                    <tr key={result.subject}>
-                      <td>{result.subject}</td>
-                      <td>17</td>
-                      <td>16</td>
-                      <td>54</td>
-                      <td>{result.score}</td>
-                      <td>{result.grade}</td>
-                      <td>Earned</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="stats-strip">
-            <div className="metric-box">
-              <div className="metric-label">Overall average</div>
-              <div className="metric-value">84.4%</div>
-              <small>Excellent performance</small>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Class position</div>
-              <div className="metric-value">3rd of 28</div>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Credits earned</div>
-              <div className="metric-value">9 of 9</div>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Subjects offered</div>
-              <div className="metric-value">9</div>
-            </div>
-          </section>
-
-          <section className="details-grid">
-            <div className="detail-card">
-              <div className="detail-title">Attendance record</div>
-              <div className="detail-list">
-                <div><span>School days</span><strong>62</strong></div>
-                <div><span>Days present</span><strong>59</strong></div>
-                <div><span>Days absent</span><strong>3</strong></div>
-                <div><span>Attendance rate</span><strong>95.2%</strong></div>
-              </div>
-            </div>
-
-            <div className="detail-card">
-              <div className="detail-title">Student record</div>
-              <div className="detail-list">
-                <div><span>Conduct and activities</span><strong>Excellent</strong></div>
-                <div><span>Punctuality</span><strong>Very good</strong></div>
-                <div><span>House</span><strong>Emerald</strong></div>
-                <div><span>Club</span><strong>Science &amp; Technology</strong></div>
-              </div>
-            </div>
-
-            <div className="detail-card">
-              <div className="detail-title">Grade key</div>
-              <div className="grade-grid">
-                <span>A 80-100</span>
-                <span>B 70-79</span>
-                <span>C 60-69</span>
-                <span>D 50-59</span>
-                <span>E 40-49</span>
-                <span>F 0-39</span>
-              </div>
-            </div>
-          </section>
-
-          <section className="comment-box">
-            <div className="comment-label">CLASS TEACHER’S COMMENT</div>
-            <p>
-              Amina demonstrates strong analytical ability and consistent commitment across her science subjects. She should sustain her revision routine and participate more in group discussions.
-            </p>
-            <small>Mr T. Balogun · Class teacher</small>
-          </section>
-        </div>
-
-        <footer className="results-footer">
-          <div className="footer-left">Next term begins: 28 April 2026</div>
-          <div className="footer-right">This result statement is strictly view-only.</div>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
-function ParentResultsLoadingPage() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="results-shell results-shell-loading">
-      <aside className="results-sidebar">
-        <div className="results-brand">
-          <div className="results-brand-mark">MS</div>
-          <div className="results-brand-copy">
-            <div className="results-brand-title">MIRACLE SCHOOL</div>
-            <small>Parent Portal</small>
+            <div className="result-subtitle">{REPORT_META.term} · {REPORT_META.session} session</div>
           </div>
-        </div>
-
-        <nav className="results-nav" aria-label="Results navigation">
-          <button type="button" className="results-nav-item active" onClick={() => navigate('/parent-dashboard')}>
-            <span>⌂</span> Overview
-          </button>
-          <button type="button" className="results-nav-item" onClick={() => navigate('/parent-results-pending')}>
-            <span>▣</span> Results
-          </button>
-        </nav>
-
-        <button type="button" className="results-logout" onClick={() => navigate('/')}>
-          <span>↩</span> Log out
-        </button>
-      </aside>
-
-      <div className="results-main">
-        <header className="results-topbar">
-          <div className="results-top-label">Parent Portal</div>
-          <button type="button" className="results-user-avatar" aria-label="Profile">AO</button>
-        </header>
-
-        <div className="results-content">
-          <div className="loading-block loading-block-wide" />
-
-          <div className="loading-layout">
-            <div className="loading-panel">
-              <div className="loading-line loading-line-long" />
-              <div className="loading-line" />
-              <div className="loading-line" />
-              <div className="loading-line loading-line-medium" />
-            </div>
-
-            <div className="loading-side-stack">
-              <div className="loading-card">
-                <div className="loading-line loading-line-short" />
-                <div className="loading-line" />
-                <div className="loading-line loading-line-medium" />
-              </div>
-              <div className="loading-card">
-                <div className="loading-line loading-line-short" />
-                <div className="loading-line" />
-              </div>
-            </div>
+          <div className="result-banner-right">
+            <Icon name={published ? 'lock' : 'clock'} size={14} />
+            {published ? 'Official view-only record' : 'Awaiting publication'}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+        </section>
 
-function ParentResultsPendingPage() {
-  const navigate = useNavigate();
+        <section className="result-meta-grid">
+          <div className="meta-entry"><span>Student</span><strong>{studentName}</strong></div>
+          <div className="meta-entry"><span>Admission number</span><strong>{admissionNumber}</strong></div>
+          <div className="meta-entry"><span>Class</span><strong>{REPORT_META.className}</strong></div>
+          <div className="meta-entry"><span>Department</span><strong>{REPORT_META.department}</strong></div>
+          <div className="meta-entry"><span>Academic session</span><strong>{REPORT_META.session}</strong></div>
+          <div className="meta-entry"><span>Term</span><strong>{REPORT_META.term}</strong></div>
+        </section>
 
-  return (
-    <div className="results-shell">
-      <aside className="results-sidebar">
-        <div className="results-brand">
-          <div className="results-brand-mark">MS</div>
-          <div className="results-brand-copy">
-            <div className="results-brand-title">MIRACLE SCHOOL</div>
-            <small>Parent Portal</small>
-          </div>
-        </div>
+        {!published && (
+          <>
+            <section className="result-pending-panel">
+              <div className="pending-clock"><Icon name="clock" size={22} /></div>
+              <div className="pending-header">RESULTS ARE BEING PROCESSED</div>
+              <h3>Current-term results have not yet been published.</h3>
+              <p>
+                The school is still preparing and reviewing this term&apos;s report. Subject scores, grades, and comments will remain unavailable until the completed results are officially published.
+              </p>
+              <button type="button" className="dark-button" onClick={() => go('/parent-dashboard-pending')}>
+                Return to overview
+              </button>
+            </section>
 
-        <nav className="results-nav" aria-label="Results navigation">
-          <button type="button" className="results-nav-item active" onClick={() => navigate('/parent-dashboard')}>
-            <span>◫</span> Overview
-          </button>
-          <button type="button" className="results-nav-item" onClick={() => navigate('/parent-results-pending')}>
-            <span>▣</span> Results
-          </button>
-        </nav>
-
-        <button type="button" className="results-logout" onClick={() => navigate('/')}>
-          <span>↩</span> Log out
-        </button>
-      </aside>
-
-      <div className="results-main">
-        <header className="results-topbar">
-          <button type="button" className="results-back-link" onClick={() => navigate('/parent-dashboard')}>
-            ← Back to overview
-          </button>
-          <button type="button" className="results-user-avatar" aria-label="Profile">AO</button>
-        </header>
-
-        <div className="results-content">
-          <section className="result-banner">
-            <div className="result-banner-left">
-              <div className="result-brand-inline">MIRACLE SCHOOLS · SENIOR SECONDARY</div>
-              <div className="result-title-row">
-                <span className="result-title-icon" aria-hidden="true">◉</span>
-                <h2>Current-term results</h2>
-              </div>
-              <div className="result-subtitle">Second term · 2025/2026 session</div>
+            <div className="results-note">
+              <Icon name="lock" size={14} />
+              No draft results or incomplete scores are visible in the Parent Portal.
             </div>
-            <div className="result-banner-right">
-              <span className="verified-dot" aria-hidden="true">◉</span>
-              Awaiting publication
-            </div>
-          </section>
+          </>
+        )}
 
-          <section className="result-meta-grid">
-            <div className="meta-entry">
-              <span>Student</span>
-              <strong>Amina Okafor</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Admission number</span>
-              <strong>SCH/2025/0142</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Class</span>
-              <strong>SS 2 Science</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Department</span>
-              <strong>Science</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Academic session</span>
-              <strong>2025/2026</strong>
-            </div>
-            <div className="meta-entry">
-              <span>Term</span>
-              <strong>Second term</strong>
-            </div>
-          </section>
-
-          <section className="result-pending-panel">
-            <div className="pending-clock" aria-hidden="true">◌</div>
-            <div className="pending-header">RESULTS ARE BEING PROCESSED</div>
-            <h3>Current-term results have not yet been published.</h3>
-            <p>
-              The school is still preparing and reviewing this term&apos;s report. Subject scores, grades, and comments will remain unavailable until the completed results are officially published.
-            </p>
-            <button type="button" className="dark-button" onClick={() => navigate('/parent-dashboard')}>
-              Return to Parent Dashboard
-            </button>
-          </section>
-
-          <div className="results-note">
-            <span aria-hidden="true">◌</span>
-            No draft results or incomplete scores are visible in the Parent Portal.
-          </div>
-        </div>
-
-        <footer className="results-footer">
-          <div className="footer-left">Next term begins: 28 April 2026</div>
-          <div className="footer-right">This result statement is strictly view-only.</div>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
-function DashboardVariantPage({ variant }: { variant: 'one' | 'two' | 'three' }) {
-  const navigate = useNavigate();
-
-  const copyByVariant = {
-    one: {
-      title: 'School overview',
-      subtitle: 'Academic performance summary',
-      accent: 'Published results',
-      stats: [
-        { label: 'Students', value: '428', detail: 'Across 11 classes' },
-        { label: 'Classes', value: '11', detail: 'Active this term' },
-        { label: 'Published', value: '21', detail: 'Result batches' },
-        { label: 'Pending', value: '04', detail: 'Awaiting review' },
-      ],
-    },
-    two: {
-      title: 'Results review',
-      subtitle: 'Ready for approval',
-      accent: 'Needs attention',
-      stats: [
-        { label: 'Marks uploaded', value: '1,236', detail: 'Current term' },
-        { label: 'Awaiting sign-off', value: '18', detail: 'Student batches' },
-        { label: 'Edited this week', value: '26', detail: 'Audit log' },
-        { label: 'Flagged records', value: '03', detail: 'Needs review' },
-      ],
-    },
-    three: {
-      title: 'House and attendance',
-      subtitle: 'School-wide monitoring',
-      accent: 'Live overview',
-      stats: [
-        { label: 'Attendance', value: '94%', detail: 'Weekly average' },
-        { label: 'Present', value: '382', detail: 'Students' },
-        { label: 'Absent', value: '46', detail: 'Students' },
-        { label: 'Promotions', value: '126', detail: 'Eligible' },
-      ],
-    },
-  } as const;
-
-  const active = copyByVariant[variant];
-
-  return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
-          <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
-          </div>
-        </div>
-
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
-
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
-        </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-portal-content">
-          <div className="admin-page-header-block">
-            <div className="admin-breadcrumb">School dashboard</div>
-            <h1>{active.title}</h1>
-          </div>
-
-          <section className="admin-variant-hero">
-            <div className="admin-variant-copy">
-              <div className="status-pill success">{active.accent}</div>
-              <h2>{active.subtitle}</h2>
-              <p>Secure result management for the term, with class-level monitoring, approval steps, and access tracking in one place.</p>
-            </div>
-            <div className="admin-variant-metric">
-              <span>Term status</span>
-              <strong>2nd Term</strong>
-              <small>2025 / 2026</small>
-            </div>
-          </section>
-
-          <div className="admin-access-stats admin-variant-stats">
-            {active.stats.map((stat) => (
-              <div key={stat.label} className="admin-stat-block">
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.detail}</small>
-              </div>
-            ))}
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function ResultsVariantPage({ variant }: { variant: 'report' | 'secondary' | 'tertiary' }) {
-  const navigate = useNavigate();
-
-  const variantCopy = {
-    report: {
-      title: 'Academic result statement',
-      tag: 'Official view only record',
-      tableTitle: 'Subject result breakdown',
-      footer: 'This result statement is strictly view-only.',
-    },
-    secondary: {
-      title: 'Term result summary',
-      tag: 'Published result sheet',
-      tableTitle: 'Subject performance',
-      footer: 'Parents can view this report only after publication.',
-    },
-    tertiary: {
-      title: 'Student progress report',
-      tag: 'Updated for current term',
-      tableTitle: 'Assessment overview',
-      footer: 'Report card data is read-only for guardians.',
-    },
-  } as const;
-
-  const content = variantCopy[variant];
-  const rows = [
-    { subject: 'English Language', score: '88', grade: 'A' },
-    { subject: 'General Mathematics', score: '90', grade: 'A' },
-    { subject: 'Biology', score: '84', grade: 'A' },
-    { subject: 'Physics', score: '80', grade: 'A' },
-    { subject: 'Economics', score: '79', grade: 'B' },
-  ];
-
-  return (
-    <div className="results-shell">
-      <div className="results-sidebar">
-        <div className="results-brand">
-          <div className="results-brand-mark">MS</div>
-          <div className="results-brand-copy">
-            <div className="results-brand-title">MIRACLE SCHOOL</div>
-            <small>School Results</small>
-          </div>
-        </div>
-
-        <nav className="results-nav" aria-label="Results navigation">
-          <button type="button" className="results-nav-item active" onClick={() => navigate('/parent-dashboard')}>
-            <span>◫</span> Overview
-          </button>
-          <button type="button" className="results-nav-item" onClick={() => navigate('/parent-results')}>
-            <span>▣</span> Results
-          </button>
-        </nav>
-
-        <button type="button" className="results-logout" onClick={() => navigate('/')}>
-          <span>↩</span> Log out
-        </button>
-      </div>
-
-      <div className="results-main">
-        <header className="results-topbar">
-          <button type="button" className="results-back-link" onClick={() => navigate('/parent-dashboard')}>
-            ← Back to overview
-          </button>
-          <button type="button" className="results-user-avatar" aria-label="Profile">AO</button>
-        </header>
-
-        <div className="results-content">
-          <section className="result-banner">
-            <div className="result-banner-left">
-              <div className="result-brand-inline">MIRACLE SCHOOLS · SENIOR SECONDARY</div>
-              <div className="result-title-row">
-                <span className="result-title-icon" aria-hidden="true">◉</span>
-                <h2>{content.title}</h2>
-              </div>
-              <div className="result-subtitle">Second term · 2025/2026 session</div>
-            </div>
-            <div className="result-banner-right">
-              <span className="verified-dot" aria-hidden="true">◉</span>
-              {content.tag}
-            </div>
-          </section>
-
-          <section className="result-meta-grid">
-            <div className="meta-entry"><span>Student</span><strong>Amina Okafor</strong></div>
-            <div className="meta-entry"><span>Admission number</span><strong>SCH/2025/0142</strong></div>
-            <div className="meta-entry"><span>Class</span><strong>SS 2 Science</strong></div>
-            <div className="meta-entry"><span>Department</span><strong>Science</strong></div>
-            <div className="meta-entry"><span>Academic session</span><strong>2025/2026</strong></div>
-            <div className="meta-entry"><span>Term</span><strong>Second term</strong></div>
-          </section>
-
-          <section className="score-panel">
-            <div className="score-panel-header">
-              <span>{content.tableTitle}</span>
-              <span>CA 1, CA 2, Exam, Total</span>
-            </div>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Subject</th>
-                    <th>CA 1</th>
-                    <th>CA 2</th>
-                    <th>Exam</th>
-                    <th>Total</th>
-                    <th>Grade</th>
-                    <th>Credit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((result) => (
-                    <tr key={result.subject}>
-                      <td>{result.subject}</td>
-                      <td>18</td>
-                      <td>17</td>
-                      <td>53</td>
-                      <td>{result.score}</td>
-                      <td>{result.grade}</td>
-                      <td>Earned</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="stats-strip">
-            <div className="metric-box">
-              <div className="metric-label">Overall average</div>
-              <div className="metric-value">84.4%</div>
-              <small>Excellent performance</small>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Class position</div>
-              <div className="metric-value">3rd of 28</div>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Credits earned</div>
-              <div className="metric-value">9 of 9</div>
-            </div>
-
-            <div className="metric-box">
-              <div className="metric-label">Subjects offered</div>
-              <div className="metric-value">9</div>
-            </div>
-          </section>
-        </div>
-
-        <footer className="results-footer">
-          <div className="footer-left">Next term begins: 28 April 2026</div>
-          <div className="footer-right">{content.footer}</div>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
-function GenerateClassCodesPage() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
-          <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
-          </div>
-        </div>
-
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
-
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
-        </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-portal-content admin-portal-content-wide">
-          <button type="button" className="admin-portal-back" onClick={() => navigate('/access-codes')}>← Back to Access Code Management</button>
-
-          <div className="class-code-title-block">
-            <h1>Generate Class Codes</h1>
-            <p>Issue new parent portal credentials for an entire class.</p>
-          </div>
-
-          <section className="class-code-generator">
-            <div className="class-code-icon">◌</div>
-            <div className="class-code-header-row">
-              <div className="class-code-label">Class-wide generation</div>
-            </div>
-
-            <div className="class-code-form">
-              <label className="class-code-field">
-                <span>Class assignment</span>
-                <select defaultValue="JSS 1C">
-                  <option>JSS 1C</option>
-                  <option>Primary 4</option>
-                  <option>Primary 5</option>
-                  <option>JSS 2A</option>
-                </select>
-              </label>
-
-              <div className="class-code-metrics">
-                <div className="class-code-metric">
-                  <span>Students receiving new codes</span>
-                  <strong>2</strong>
-                </div>
-                <div className="class-code-metric">
-                  <span>Existing codes being replaced</span>
-                  <strong>0</strong>
-                </div>
-              </div>
-
-              <div className="class-code-warning">
-                <span className="warning-symbol">!</span>
+        {published && (
+          <>
+            <section className="score-panel">
+              <div className="score-panel-header">
                 <div>
-                  <strong>This action issues new login credentials</strong>
-                  <p>Any existing access code for a student in JSS 1C will stop working. The new codes will be displayed once after generation.</p>
+                  <div className="sr-eyebrow">Academic transcript</div>
+                  <h3 className="sr-section-title">Subject result breakdown</h3>
+                </div>
+                <span className="score-panel-note">CA 1: 20 · CA 2: 20 · Examination: 60</span>
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Subject</th>
+                      <th>CA 1</th>
+                      <th>CA 2</th>
+                      <th>Exam</th>
+                      <th>Total</th>
+                      <th>Grade</th>
+                      <th>Credit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.subject}>
+                        <td>{row.subject}</td>
+                        <td>{row.ca1}</td>
+                        <td>{row.ca2}</td>
+                        <td>{row.exam}</td>
+                        <td><strong>{row.total}</strong></td>
+                        <td><span className="grade-chip">{row.grade}</span></td>
+                        <td>
+                          {row.total >= CREDIT_PASS_MARK
+                            ? <span className="status-badge success">Earned</span>
+                            : <span className="status-badge muted">Not earned</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="stats-strip">
+              <div className="sr-stat-primary">
+                <div className="metric-label">Overall average</div>
+                <div className="sr-stat-figure">{average.toFixed(1)}<span>%</span></div>
+                <small className="sr-stat-note">{performanceLabel(average)}</small>
+              </div>
+
+              <div className="sr-stat-grid">
+                <div className="metric-box">
+                  <div className="metric-label">Class position</div>
+                  <div className="metric-value">{REPORT_META.classPosition}</div>
+                </div>
+                <div className="metric-box">
+                  <div className="metric-label">Subjects offered</div>
+                  <div className="metric-value">{rows.length}</div>
+                </div>
+                <div className="metric-box">
+                  <div className="metric-label">Credits earned</div>
+                  <div className="metric-value">{credits} of {rows.length}</div>
+                </div>
+                <div className="metric-box">
+                  <div className="metric-label">Highest total</div>
+                  <div className="metric-value">{highest} / 100</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="details-grid">
+              <div className="detail-card">
+                <div className="sr-eyebrow">Attendance record</div>
+                <div className="detail-title">Term attendance</div>
+                <div className="detail-list">
+                  <div><span>School days</span><strong>{REPORT_META.schoolDays}</strong></div>
+                  <div><span>Days present</span><strong>{REPORT_META.daysPresent}</strong></div>
+                  <div><span>Days absent</span><strong>{absent}</strong></div>
+                  <div><span>Attendance rate</span><strong>{attendanceRate}%</strong></div>
                 </div>
               </div>
 
-              <div className="class-code-checklist">
-                <p>Before you continue</p>
-                <ul>
-                  <li>All students in JSS 1C are included.</li>
-                  <li>Existing codes for this class are replaced, not duplicated.</li>
-                  <li>New codes will not appear later in the audit log.</li>
-                </ul>
+              <div className="detail-card">
+                <div className="sr-eyebrow">Student record</div>
+                <div className="detail-title">Conduct and activities</div>
+                <div className="detail-list">
+                  <div><span>Conduct</span><strong>{REPORT_META.conduct}</strong></div>
+                  <div><span>Punctuality</span><strong>{REPORT_META.punctuality}</strong></div>
+                  <div><span>House</span><strong>{REPORT_META.house}</strong></div>
+                  <div><span>Club</span><strong>{REPORT_META.club}</strong></div>
+                </div>
               </div>
 
-              <label className="class-code-consent">
-                <input type="checkbox" />
-                <span>I understand that this will replace existing credentials and that the new codes are shown only once.</span>
-              </label>
-            </div>
+              <div className="detail-card">
+                <div className="sr-eyebrow">Grade key</div>
+                <div className="detail-title">Secondary grading scale</div>
+                <div className="grade-grid">
+                  {GRADE_SCALE.map((band) => (
+                    <div key={band.grade} className="grade-key-item">
+                      <span className="grade-chip">{band.grade}</span>
+                      <span>{band.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
 
-            <div className="class-code-actions">
-              <button type="button" className="admin-secondary-light" onClick={() => navigate('/access-codes')}>Cancel</button>
-              <button type="button" className="admin-primary-dark">Generate Codes →</button>
-            </div>
-          </section>
+            <section className="comment-box">
+              <div className="comment-label">CLASS TEACHER’S COMMENT</div>
+              <p>
+                {firstName} demonstrates strong analytical ability and consistent commitment across her science subjects. She should sustain her revision routine and participate more in group discussions.
+              </p>
+              <small>{REPORT_META.teacherName} · Class teacher</small>
+            </section>
+          </>
+        )}
+      </div>
+
+      <footer className="results-footer">
+        <div className="footer-left">
+          <small>Next term begins</small>
+          <strong>{REPORT_META.nextTermBegins}</strong>
         </div>
-      </main>
-    </div>
+        <div className="footer-right">
+          <Icon name="lock" size={14} />
+          This result statement is strictly view-only.
+        </div>
+      </footer>
+    </ParentShell>
   );
 }
 
-function StudentManagementPage() {
+/* -------------------------------------------------------------------------- */
+/*  Admin shell                                                                */
+/* -------------------------------------------------------------------------- */
+
+type AdminNavKey = 'overview' | 'students' | 'access-codes' | 'results-upload' | 'results-review' | 'audit-log';
+
+const adminNavItems: Array<{ key: AdminNavKey; label: string; icon: IconName; path: string }> = [
+  { key: 'overview', label: 'Overview', icon: 'home', path: '/staff-dashboard' },
+  { key: 'students', label: 'Student Management', icon: 'users', path: '/student-management' },
+  { key: 'access-codes', label: 'Access Codes', icon: 'lock', path: '/access-codes' },
+  { key: 'results-upload', label: 'Results Upload', icon: 'upload', path: '/staff-dashboard' },
+  { key: 'results-review', label: 'Results Review', icon: 'doc', path: '/staff-dashboard' },
+  { key: 'audit-log', label: 'Audit Log', icon: 'history', path: '/staff-dashboard' },
+];
+
+function AdminShell({
+  active,
+  title,
+  contentClassName = 'admin-portal-content',
+  children,
+}: {
+  active: AdminNavKey;
+  title: string;
+  contentClassName?: string;
+  children: ReactNode;
+}) {
   const navigate = useNavigate();
 
   return (
     <div className="admin-portal-shell">
       <aside className="admin-portal-sidebar">
         <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
+          <AdminLogo />
           <div>
-            <div className="admin-portal-title">Greenfield</div>
+            <div className="admin-portal-title">{ADMIN_BRAND}</div>
             <small>School Results Portal</small>
           </div>
         </div>
 
         <div className="admin-portal-section-label">Administration</div>
         <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
+          {adminNavItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={item.key === active ? 'admin-portal-item active' : 'admin-portal-item'}
+              onClick={() => navigate(item.path)}
+            >
+              <Icon name={item.icon} />
+              {item.label}
+            </button>
+          ))}
         </nav>
 
         <div className="admin-portal-user">
@@ -1294,490 +1274,674 @@ function StudentManagementPage() {
           </div>
         </div>
 
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
+        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>
+          <Icon name="logout" />
+          Log out
+        </button>
       </aside>
 
       <main className="admin-portal-main">
         <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
+          <div className="admin-topbar-heading">
+            <small className="admin-portal-label">Admin Portal</small>
+            <span className="admin-topbar-title">{title}</span>
+          </div>
+
+          <div className="admin-portal-topbar-actions">
+            <div className="admin-portal-search-wrap">
+              <span className="admin-portal-search-icon"><Icon name="search" size={16} /></span>
+              <input type="text" placeholder="Search portal" aria-label="Search portal" />
+              <span className="admin-portal-shortcut" aria-hidden="true">⌘ K</span>
+            </div>
+            <button type="button" className="admin-portal-bell" aria-label="Notifications">
+              <Icon name="bell" size={17} />
+              <span className="admin-portal-bell-dot" aria-hidden="true" />
+            </button>
             <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
           </div>
         </header>
 
-        <div className="admin-portal-content">
-          <button type="button" className="admin-portal-back" onClick={() => navigate('/staff-dashboard')}>← back to student management</button>
+        <div className={contentClassName}>{children}</div>
+      </main>
+    </div>
+  );
+}
 
-          <div className="admin-page-header-block">
-            <h1>Import student register</h1>
-            <p>Add existing student records from a CSV or Excel register.</p>
+/* -------------------------------------------------------------------------- */
+/*  Admin: student management                                                  */
+/* -------------------------------------------------------------------------- */
+
+function StudentManagementPage({ initial = registerStudents }: { initial?: RegisterStudent[] }) {
+  const navigate = useNavigate();
+  const showMessage = useMessageModal();
+  const [students, setStudents] = useState(initial);
+  const [search, setSearch] = useState('');
+  const [classFilter, setClassFilter] = useState('All classes');
+
+  const classes = useMemo(() => [...new Set(students.map((student) => student.className))].sort(), [students]);
+
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return students.filter((student) => (
+      (classFilter === 'All classes' || student.className === classFilter)
+      && (!query || student.name.toLowerCase().includes(query) || student.admissionNumber.toLowerCase().includes(query))
+    ));
+  }, [students, search, classFilter]);
+
+  const handleDeactivate = (student: RegisterStudent) => {
+    if (!window.confirm(`Deactivate ${student.name}? They will no longer appear as an active student.`)) return;
+    setStudents((current) => current.map((entry) => (
+      entry.admissionNumber === student.admissionNumber ? { ...entry, active: false } : entry
+    )));
+  };
+
+  return (
+    <AdminShell active="students" title="Student Management" contentClassName="admin-access-content">
+      <div className="admin-page-header-block access-header-row">
+        <div>
+          <h1>Student Management</h1>
+          <p>Manage student profiles, class assignments, and account access.</p>
+        </div>
+
+        {students.length > 0 && (
+          <div className="admin-header-actions">
+            <button type="button" className="admin-secondary-light btn-with-icon" onClick={() => navigate('/student-import')}>
+              <Icon name="upload" size={16} />
+              Import register
+            </button>
+            <button type="button" className="admin-primary-dark btn-with-icon" onClick={() => navigate('/student-add')}>
+              <Icon name="plus" size={16} />
+              Add student
+            </button>
+          </div>
+        )}
+      </div>
+
+      {students.length === 0 ? (
+        <section className="empty-state-panel">
+          <div className="empty-state-icon"><Icon name="users" size={24} /></div>
+          <h2>No students in the system</h2>
+          <p>There are currently no student records available. Add a student manually or import your school’s existing Excel register to get started.</p>
+          <div className="empty-state-actions">
+            <button type="button" className="admin-primary-dark btn-with-icon" onClick={() => navigate('/student-add')}>
+              <Icon name="plus" size={16} />
+              Add student manually
+            </button>
+            <button type="button" className="admin-secondary-light btn-with-icon" onClick={() => navigate('/student-import')}>
+              <Icon name="upload" size={16} />
+              Import Excel register
+            </button>
+          </div>
+          <small className="empty-state-note">Excel and CSV registers are supported for bulk import.</small>
+        </section>
+      ) : (
+        <section className="access-table-panel">
+          <div className="access-table-header">
+            <div>
+              <div className="admin-breadcrumb">School register</div>
+              <h3>All students</h3>
+              <small className="access-table-count">Showing {visible.length} of {students.length} records</small>
+            </div>
+
+            <div className="access-table-controls">
+              <div className="search-inline">
+                <Icon name="search" size={16} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search name or admission number"
+                  aria-label="Search students"
+                />
+              </div>
+              <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} aria-label="Filter by class">
+                <option>All classes</option>
+                {classes.map((className) => <option key={className}>{className}</option>)}
+              </select>
+            </div>
           </div>
 
-          <section className="admin-upload-card">
-            <div className="admin-upload-label">Bulk import</div>
-            <h2>Upload your student register</h2>
-            <p>Include columns for full name, admission number, class, date of birth, gender and account status.</p>
+          <div className="access-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Admission number</th>
+                  <th>Assigned class</th>
+                  <th>Account status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="access-table-empty">No students match your search.</td>
+                  </tr>
+                )}
+                {visible.map((student) => (
+                  <tr key={student.admissionNumber}>
+                    <td>
+                      <div className="access-student-name">
+                        <span className="access-avatar">{initialsOf(student.name)}</span>
+                        {student.name}
+                      </div>
+                    </td>
+                    <td>{student.admissionNumber}</td>
+                    <td>{student.className}</td>
+                    <td>
+                      <span className={student.active ? 'status-badge success' : 'status-badge muted'}>
+                        {student.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="student-actions">
+                        <button
+                          type="button"
+                          className="admin-link-button"
+                          onClick={() => showMessage('Editing student records is not connected yet.')}
+                        >
+                          Edit
+                        </button>
+                        {student.active ? (
+                          <button type="button" className="admin-link-button danger" onClick={() => handleDeactivate(student)}>
+                            Deactivate
+                          </button>
+                        ) : (
+                          <span className="admin-muted-text">Deactivated</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </AdminShell>
+  );
+}
 
-            <div className="admin-upload-dropzone">
-              <div className="admin-upload-icon">⇪</div>
-              <div className="admin-upload-copy">
+const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+
+function StudentImportPage() {
+  const navigate = useNavigate();
+  const showMessage = useMessageModal();
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  const [dragging, setDragging] = useState(false);
+
+  const accept = (candidate: File | undefined) => {
+    if (!candidate) return;
+
+    if (!/\.(csv|xlsx|xls)$/i.test(candidate.name)) {
+      setFile(null);
+      setError('Choose a CSV or Excel file (.csv, .xlsx or .xls).');
+      return;
+    }
+
+    if (candidate.size > MAX_IMPORT_BYTES) {
+      setFile(null);
+      setError('That file is larger than 10 MB.');
+      return;
+    }
+
+    setError('');
+    setFile(candidate);
+  };
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    accept(event.target.files?.[0]);
+    event.target.value = '';
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    accept(event.dataTransfer.files?.[0]);
+  };
+
+  return (
+    <AdminShell active="students" title="Student Management">
+      <button type="button" className="admin-portal-back" onClick={() => navigate('/student-management')}>
+        <Icon name="arrow-left" size={14} />
+        <span>Back to student management</span>
+      </button>
+
+      <div className="admin-page-header-block">
+        <h1>Import student register</h1>
+        <p>Add existing student records from a CSV or Excel register.</p>
+      </div>
+
+      <section className="admin-upload-card">
+        <div className="admin-upload-label">Bulk import</div>
+        <h2>Upload your student register</h2>
+        <p>Include columns for full name, admission number, class, date of birth, gender, and account status.</p>
+
+        <div
+          className={dragging ? 'admin-upload-dropzone is-dragging' : 'admin-upload-dropzone'}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+        >
+          <div className="admin-upload-icon"><Icon name="upload" size={20} /></div>
+          <div className="admin-upload-copy">
+            {file ? (
+              <>
+                <div>{file.name}</div>
+                <small>{(file.size / 1024).toFixed(file.size < 102400 ? 1 : 0)} KB</small>
+              </>
+            ) : (
+              <>
                 <div>Choose a register to upload</div>
                 <small>CSV or Excel files up to 10 MB</small>
-              </div>
-              <button type="button" className="admin-upload-button">Browse files</button>
-            </div>
-
-            <div className="admin-upload-note">
-              <strong>Before you import</strong>
-              <span>Duplicate admission numbers will be skipped. You can edit imported student records after the upload is complete.</span>
-            </div>
-
-            <div className="admin-upload-actions">
-              <button type="button" className="admin-secondary-light">Cancel</button>
-              <button type="button" className="admin-primary-dark">Import register →</button>
-            </div>
-          </section>
+              </>
+            )}
+          </div>
+          <button type="button" className="admin-link-button" onClick={() => document.getElementById('register-file')?.click()}>
+            {file ? 'Choose a different file' : 'Browse files'}
+          </button>
+          <input id="register-file" type="file" accept=".csv,.xlsx,.xls" hidden onChange={handleChange} />
         </div>
-      </main>
-    </div>
+
+        {error && <AuthError message={error} />}
+
+        <div className="admin-upload-note">
+          <strong>Before you import</strong>
+          <span>Duplicate admission numbers will be skipped. You can edit imported student records after the upload is complete.</span>
+        </div>
+
+        <div className="admin-upload-actions">
+          <button type="button" className="admin-secondary-light" onClick={() => navigate('/student-management')}>Cancel</button>
+          <button
+            type="button"
+            className="admin-primary-dark btn-with-icon"
+            disabled={!file}
+            onClick={() => showMessage(`Register import is not connected to the backend yet. ${file?.name ?? 'The file'} was not uploaded.`)}
+          >
+            Import register
+            <Icon name="arrow-right" size={16} />
+          </button>
+        </div>
+      </section>
+    </AdminShell>
+  );
+}
+
+function FormField({
+  label,
+  required = false,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className={error ? 'sr-field has-error' : 'sr-field'}>
+      <span className="sr-field-label">
+        {label}
+        {required && <span className="sr-required" aria-hidden="true"> *</span>}
+      </span>
+      {children}
+      {error && <span className="sr-field-error" role="alert">{error}</span>}
+    </label>
   );
 }
 
 function StudentAddPage() {
   const navigate = useNavigate();
+  const showMessage = useMessageModal();
+  const year = new Date().getFullYear();
+  const [form, setForm] = useState({
+    fullName: '',
+    admissionNumber: `SCH/${year}/`,
+    className: 'JSS 1A',
+    dob: '',
+    gender: '',
+    status: 'Active',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const update = (key: keyof typeof form) => (value: string) => setForm((current) => ({ ...current, [key]: value }));
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const next: Record<string, string> = {};
+    const admission = form.admissionNumber.trim().toUpperCase();
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (form.fullName.trim().length < 2) next.fullName = 'Enter the student’s full name.';
+
+    if (!/^SCH\/\d{4}\/\d{3,5}$/.test(admission)) {
+      next.admissionNumber = `Use the format SCH/${year}/0001.`;
+    } else if (registerStudents.some((student) => student.admissionNumber === admission)) {
+      next.admissionNumber = 'That admission number is already in the register.';
+    }
+
+    if (!form.dob) next.dob = 'Select a date of birth.';
+    else if (form.dob > today) next.dob = 'Date of birth can’t be in the future.';
+
+    if (!form.gender) next.gender = 'Select a gender.';
+
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    showMessage('The details are valid, but saving students is not connected to the backend yet.');
+  };
 
   return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
-          <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
-          </div>
-        </div>
+    <AdminShell active="students" title="Student Management">
+      <button type="button" className="admin-portal-back" onClick={() => navigate('/student-management')}>
+        <Icon name="arrow-left" size={14} />
+        <span>Back to student management</span>
+      </button>
 
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
+      <div className="admin-page-header-block">
+        <h1>Add a student</h1>
+        <p>Create a student profile and assign them to a class.</p>
+      </div>
 
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
-        </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-portal-content">
-          <button type="button" className="admin-portal-back" onClick={() => navigate('/student-management')}>← back</button>
-
-          <div className="admin-page-header-block">
-            <div className="admin-breadcrumb">Student management</div>
-            <h1>Add new student</h1>
-          </div>
-
-          <section className="student-form-shell">
-            <div className="student-form-card">
-              <div className="student-form-header">
-                <div>
-                  <div className="admin-breadcrumb">Profile</div>
-                  <h2>Student details</h2>
-                </div>
-                <button type="button" className="admin-primary-dark">Save record</button>
-              </div>
-
-              <div className="student-form-grid">
-                <label>
-                  <span>First name</span>
-                  <input type="text" placeholder="Enter first name" />
-                </label>
-                <label>
-                  <span>Last name</span>
-                  <input type="text" placeholder="Enter last name" />
-                </label>
-                <label>
-                  <span>Admission number</span>
-                  <input type="text" placeholder="ADM-0008" />
-                </label>
-                <label>
-                  <span>Class</span>
-                  <select defaultValue="">
-                    <option value="" disabled>Select class</option>
-                    <option>Primary 4</option>
-                    <option>Primary 5</option>
-                    <option>JSS 1</option>
-                    <option>JSS 2A</option>
-                    <option>SS 1A</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Date of birth</span>
-                  <input type="date" />
-                </label>
-                <label>
-                  <span>Gender</span>
-                  <select defaultValue="">
-                    <option value="" disabled>Select gender</option>
-                    <option>Female</option>
-                    <option>Male</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Parent/guardian phone</span>
-                  <input type="tel" placeholder="0802 000 0000" />
-                </label>
-                <label>
-                  <span>Parent/guardian name</span>
-                  <input type="text" placeholder="Enter parent name" />
-                </label>
-              </div>
-
-              <div className="student-form-footer">
-                <button type="button" className="admin-secondary-light">Cancel</button>
-                <button type="button" className="admin-primary-dark">Create student</button>
-              </div>
+      <section className="student-form-shell">
+        <form className="student-form-card" onSubmit={handleSubmit} noValidate>
+          <div className="student-form-header">
+            <div>
+              <div className="admin-breadcrumb">Student information</div>
+              <h2>New student details</h2>
+              <p className="student-form-note">All fields are required to create a complete school record.</p>
             </div>
-          </section>
-        </div>
-      </main>
-    </div>
+          </div>
+
+          <div className="student-form-grid">
+            <FormField label="Full name" required error={errors.fullName}>
+              <input
+                type="text"
+                value={form.fullName}
+                onChange={(event) => update('fullName')(event.target.value)}
+                placeholder="e.g. Adaeze Obi"
+                autoComplete="off"
+              />
+            </FormField>
+
+            <FormField label="Admission number" required error={errors.admissionNumber}>
+              <input
+                type="text"
+                value={form.admissionNumber}
+                onChange={(event) => update('admissionNumber')(event.target.value)}
+                autoComplete="off"
+              />
+            </FormField>
+
+            <FormField label="Class assignment" required>
+              <select value={form.className} onChange={(event) => update('className')(event.target.value)}>
+                {CLASS_OPTIONS.map((className) => <option key={className}>{className}</option>)}
+              </select>
+            </FormField>
+
+            <FormField label="Date of birth" required error={errors.dob}>
+              <input type="date" value={form.dob} onChange={(event) => update('dob')(event.target.value)} />
+            </FormField>
+
+            <FormField label="Gender" required error={errors.gender}>
+              <select value={form.gender} onChange={(event) => update('gender')(event.target.value)}>
+                <option value="" disabled>Select gender</option>
+                <option>Female</option>
+                <option>Male</option>
+              </select>
+            </FormField>
+
+            <FormField label="Account status">
+              <select value={form.status} onChange={(event) => update('status')(event.target.value)}>
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </FormField>
+          </div>
+
+          <div className="student-form-footer">
+            <button type="button" className="admin-secondary-light" onClick={() => navigate('/student-management')}>Cancel</button>
+            <button type="submit" className="admin-primary-dark btn-with-icon">
+              Add student
+              <Icon name="arrow-right" size={16} />
+            </button>
+          </div>
+        </form>
+      </section>
+    </AdminShell>
   );
 }
 
-function EmptyStudentPage() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
-          <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
-          </div>
-        </div>
-
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/student-empty')}>Student Management</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
-
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
-        </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-portal-content">
-          <div className="admin-page-header-block">
-            <div className="admin-breadcrumb">Student register</div>
-            <h1>Manage students</h1>
-          </div>
-
-          <section className="empty-state-panel">
-            <div className="empty-state-icon">◌</div>
-            <h2>No students added yet</h2>
-            <p>Start by importing your school register or add a new student manually.</p>
-            <div className="empty-state-actions">
-              <button type="button" className="admin-secondary-light" onClick={() => navigate('/student-management')}>Import register</button>
-              <button type="button" className="admin-primary-dark" onClick={() => navigate('/student-add')}>Add student</button>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function AwaitingPublicationPage() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
-          <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
-          </div>
-        </div>
-
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/dashboard-awaiting-publication')}>Overview</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
-
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
-        </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-portal-content">
-          <div className="admin-page-header-block">
-            <div className="admin-breadcrumb">School dashboard</div>
-            <h1>Awaiting publication</h1>
-          </div>
-
-          <section className="status-hero-panel">
-            <div className="status-hero-copy">
-              <div className="status-pill warning">Pending review</div>
-              <h2>Current results are being checked before they go live.</h2>
-              <p>Review the uploaded marks, confirm final entries, and publish once the school approves the batch.</p>
-            </div>
-            <div className="status-hero-metric">
-              <span>Files waiting</span>
-              <strong>03</strong>
-              <small>Primary 4 • Primary 5 • JSS 2A</small>
-            </div>
-          </section>
-
-          <div className="admin-access-stats">
-            <div className="admin-stat-block">
-              <span>Draft batches</span>
-              <strong>12</strong>
-              <small>Across all classes</small>
-            </div>
-            <div className="admin-stat-block">
-              <span>Published</span>
-              <strong>07</strong>
-              <small>Visible to parents</small>
-            </div>
-            <div className="admin-stat-block">
-              <span>Awaiting review</span>
-              <strong>03</strong>
-              <small>Needs approval</small>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
+/* -------------------------------------------------------------------------- */
+/*  Admin: access codes                                                        */
+/* -------------------------------------------------------------------------- */
 
 function AccessCodeManagementPage() {
   const navigate = useNavigate();
+  const showMessage = useMessageModal();
+  const [search, setSearch] = useState('');
+  const [classFilter, setClassFilter] = useState('All classes');
 
-  const accessRows = [
-    { name: 'Amina Okafor', admissionNumber: 'SCH/2025/0142', className: 'JSS 2A', status: 'Generated', lastGenerated: '18 Mar 2026' },
-    { name: 'David Eze', admissionNumber: 'SCH/2025/0156', className: 'JSS 2A', status: 'Generated', lastGenerated: '18 Mar 2026' },
-    { name: 'Nkeka Ibe', admissionNumber: 'SCH/2025/0181', className: 'JSS 3B', status: 'Generated', lastGenerated: '18 Mar 2026' },
-    { name: 'Tobi Martins', admissionNumber: 'SCH/2025/0204', className: 'SS 1A', status: 'Not generated', lastGenerated: '-' },
-    { name: 'Zainab Musa', admissionNumber: 'SCH/2025/0227', className: 'JSS 1C', status: 'Not generated', lastGenerated: '-' },
-    { name: 'Chidera Nwosu', admissionNumber: 'SCH/2025/0119', className: 'SS 2C', status: 'Not generated', lastGenerated: '-' },
-    { name: 'Ifeoluwa Adeyemi', admissionNumber: 'SCH/2025/0241', className: 'JSS 1C', status: 'Not generated', lastGenerated: '-' },
-    { name: 'Samuel Effiong', admissionNumber: 'SCH/2025/0096', className: 'SS 2C', status: 'Not generated', lastGenerated: '-' },
-  ];
+  const classes = useMemo(() => [...new Set(registerStudents.map((student) => student.className))].sort(), []);
+  const generated = registerStudents.filter((student) => student.codeGeneratedOn).length;
+
+  const rows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return registerStudents.filter((student) => (
+      (classFilter === 'All classes' || student.className === classFilter)
+      && (!query || student.name.toLowerCase().includes(query) || student.admissionNumber.toLowerCase().includes(query))
+    ));
+  }, [search, classFilter]);
 
   return (
-    <div className="admin-portal-shell">
-      <aside className="admin-portal-sidebar">
-        <div className="admin-portal-brand">
-          <div className="admin-portal-logo">▣</div>
+    <AdminShell active="access-codes" title="Access Codes" contentClassName="admin-access-content">
+      <div className="admin-page-header-block access-header-row">
+        <div>
+          <div className="admin-breadcrumb">Parent portal access</div>
+          <h1>Access Code Management</h1>
+          <p>Generate and monitor secure parent access without exposing active codes.</p>
+        </div>
+        <button type="button" className="admin-primary-dark" onClick={() => navigate('/access-codes-generate')}>Generate class codes</button>
+      </div>
+
+      <div className="admin-access-stats">
+        <div className="admin-stat-block">
+          <span>Total students</span>
+          <strong>{registerStudents.length}</strong>
+          <small>Across {classes.length} classes</small>
+        </div>
+        <div className="admin-stat-block">
+          <span>Codes generated</span>
+          <strong>{generated}</strong>
+          <small>Available through secure delivery only</small>
+        </div>
+        <div className="admin-stat-block">
+          <span>Not generated</span>
+          <strong>{registerStudents.length - generated}</strong>
+          <small>Students still requiring access</small>
+        </div>
+      </div>
+
+      <div className="access-inline-info">
+        <span className="info-badge"><Icon name="lock" size={16} /></span>
+        <div>
+          <strong>Codes remain private</strong>
+          <span>Access codes are shown once, immediately after generation. They never appear in this student list or in the audit log.</span>
+        </div>
+      </div>
+
+      <section className="access-table-panel">
+        <div className="access-table-header">
           <div>
-            <div className="admin-portal-title">Greenfield</div>
-            <small>School Results Portal</small>
+            <div className="admin-breadcrumb">Student access</div>
+            <h3>Access-code status</h3>
+            <small className="access-table-count">Showing {rows.length} of {registerStudents.length} students</small>
+          </div>
+
+          <div className="access-table-controls">
+            <div className="search-inline">
+              <Icon name="search" size={16} />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search name or admission number"
+                aria-label="Search students"
+              />
+            </div>
+            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)} aria-label="Filter by class">
+              <option>All classes</option>
+              {classes.map((className) => <option key={className}>{className}</option>)}
+            </select>
           </div>
         </div>
 
-        <div className="admin-portal-section-label">Administration</div>
-        <nav className="admin-portal-nav" aria-label="Admin navigation">
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Overview</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/student-management')}>Student Management</button>
-          <button type="button" className="admin-portal-item active" onClick={() => navigate('/access-codes')}>Access Codes</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Upload</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Results Review</button>
-          <button type="button" className="admin-portal-item" onClick={() => navigate('/staff-dashboard')}>Audit Log</button>
-        </nav>
-
-        <div className="admin-portal-user">
-          <div className="admin-portal-user-avatar">AO</div>
-          <div>
-            <strong>Admin Office</strong>
-            <small>Administrator</small>
-          </div>
+        <div className="access-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Admission number</th>
+                <th>Assigned class</th>
+                <th>Access-code status</th>
+                <th>Last generated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="access-table-empty">No students match your search.</td>
+                </tr>
+              )}
+              {rows.map((row) => (
+                <tr key={row.admissionNumber}>
+                  <td>
+                    <div className="access-student-name">
+                      <span className="access-avatar">{initialsOf(row.name)}</span>
+                      {row.name}
+                    </div>
+                  </td>
+                  <td>{row.admissionNumber}</td>
+                  <td>{row.className}</td>
+                  <td>
+                    <span className={row.codeGeneratedOn ? 'status-badge success' : 'status-badge muted'}>
+                      {row.codeGeneratedOn ? 'Generated' : 'Not generated'}
+                    </span>
+                  </td>
+                  <td>{row.codeGeneratedOn ?? '—'}</td>
+                  <td>
+                    <div className="student-actions">
+                      <button
+                        type="button"
+                        className="admin-link-button"
+                        onClick={() => showMessage('Code generation is not connected to the backend yet.')}
+                      >
+                        {row.codeGeneratedOn ? 'Regenerate' : 'Generate code'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        <button type="button" className="admin-portal-logout" onClick={() => navigate('/')}>↩ Log out</button>
-      </aside>
-
-      <main className="admin-portal-main">
-        <header className="admin-portal-topbar">
-          <div className="admin-portal-label">Admin Portal</div>
-          <div className="admin-portal-search-wrap">
-            <span className="admin-portal-search-icon">⌕</span>
-            <input type="text" placeholder="Search portal" />
-            <button type="button" className="admin-portal-shortcut">⌘</button>
-            <button type="button" className="admin-portal-avatar" aria-label="User profile">AO</button>
-          </div>
-        </header>
-
-        <div className="admin-access-content">
-          <div className="admin-page-header-block access-header-row">
-            <div>
-              <div className="admin-breadcrumb">Parent Portal Access</div>
-              <h1>Access Code Management</h1>
-            </div>
-            <button type="button" className="admin-primary-dark" onClick={() => navigate('/access-codes-generate')}>Generate class codes</button>
-          </div>
-
-          <div className="admin-access-stats">
-            <div className="admin-stat-block">
-              <span>Total students</span>
-              <strong>8</strong>
-              <small>Across 5 classes</small>
-            </div>
-            <div className="admin-stat-block">
-              <span>Codes generated</span>
-              <strong>3</strong>
-              <small>Active this term</small>
-            </div>
-            <div className="admin-stat-block">
-              <span>Not generated</span>
-              <strong>5</strong>
-              <small>Students still require access</small>
-            </div>
-          </div>
-
-          <div className="access-inline-info">
-            <span className="info-badge">i</span>
-            <span>Codes remain private; only a parent in this student record can access their child’s results.</span>
-          </div>
-
-          <section className="access-table-panel">
-            <div className="access-table-header">
-              <div>
-                <div className="admin-breadcrumb">Student access</div>
-                <h3>Access-code status</h3>
-              </div>
-
-              <div className="access-table-controls">
-                <div className="search-inline">
-                  <span>⌕</span>
-                  <input type="text" placeholder="Search name or admission number" />
-                </div>
-                <select defaultValue="All classes">
-                  <option>All classes</option>
-                  <option>JSS 2A</option>
-                  <option>JSS 3B</option>
-                  <option>SS 1A</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="access-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Student</th>
-                    <th>Admission number</th>
-                    <th>Assigned class</th>
-                    <th>Access-code status</th>
-                    <th>Last generated</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accessRows.map((row) => (
-                    <tr key={row.admissionNumber}>
-                      <td>
-                        <div className="access-student-name">
-                          <span className="access-avatar">{row.name.split(' ').map((name) => name[0]).slice(0, 2).join('').toUpperCase()}</span>
-                          {row.name}
-                        </div>
-                      </td>
-                      <td>{row.admissionNumber}</td>
-                      <td>{row.className}</td>
-                      <td>
-                        <span className={row.status === 'Generated' ? 'status-badge success' : 'status-badge muted'}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td>{row.lastGenerated}</td>
-                      <td>
-                        <button type="button" className={row.status === 'Generated' ? 'admin-table-button' : 'admin-table-button primary'}>
-                          {row.status === 'Generated' ? 'Regenerate' : 'Generate code'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+      </section>
+    </AdminShell>
   );
 }
+
+function GenerateClassCodesPage() {
+  const navigate = useNavigate();
+  const showMessage = useMessageModal();
+  const classes = useMemo(() => [...new Set(registerStudents.map((student) => student.className))].sort(), []);
+  const [className, setClassName] = useState(classes[0]);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const inClass = registerStudents.filter((student) => student.className === className);
+  const replacing = inClass.filter((student) => student.codeGeneratedOn).length;
+
+  return (
+    <AdminShell active="access-codes" title="Access Codes" contentClassName="admin-portal-content admin-portal-content-wide">
+      <button type="button" className="admin-portal-back" onClick={() => navigate('/access-codes')}>
+        <Icon name="arrow-left" size={14} />
+        <span>Back to Access Code Management</span>
+      </button>
+
+      <div className="class-code-title-block">
+        <h1>Generate Class Codes</h1>
+        <p>Issue new parent portal credentials for an entire class.</p>
+      </div>
+
+      <section className="class-code-generator">
+        <div className="class-code-icon"><Icon name="lock" size={22} /></div>
+        <div className="class-code-header-row">
+          <div className="class-code-label">Class-wide generation</div>
+        </div>
+
+        <div className="class-code-form">
+          <label className="class-code-field">
+            <span>Class assignment</span>
+            <select value={className} onChange={(event) => { setClassName(event.target.value); setConfirmed(false); }}>
+              {classes.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+
+          <div className="class-code-metrics">
+            <div className="class-code-metric">
+              <span>Students receiving new codes</span>
+              <strong>{inClass.length}</strong>
+            </div>
+            <div className="class-code-metric">
+              <span>Existing codes being replaced</span>
+              <strong>{replacing}</strong>
+            </div>
+          </div>
+
+          <div className="class-code-warning">
+            <span className="warning-symbol">!</span>
+            <div>
+              <strong>This action issues new login credentials</strong>
+              <p>Any existing access code for a student in {className} will stop working. The new codes will be displayed once after generation.</p>
+            </div>
+          </div>
+
+          <div className="class-code-checklist">
+            <p>Before you continue</p>
+            <ul>
+              <li>All students in {className} are included.</li>
+              <li>Existing codes for this class are replaced, not duplicated.</li>
+              <li>New codes will not appear later in the audit log.</li>
+            </ul>
+          </div>
+
+          <label className="class-code-consent">
+            <input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />
+            <span>I understand that this will replace existing credentials and that the new codes are shown only once.</span>
+          </label>
+        </div>
+
+        <div className="class-code-actions">
+          <button type="button" className="admin-secondary-light" onClick={() => navigate('/access-codes')}>Cancel</button>
+          <button
+            type="button"
+            className="admin-primary-dark btn-with-icon"
+            disabled={!confirmed || inClass.length === 0}
+            onClick={() => showMessage('Code generation is not connected to the backend yet.')}
+          >
+            Generate Codes
+            <Icon name="arrow-right" size={16} />
+          </button>
+        </div>
+      </section>
+    </AdminShell>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Staff dashboard (no screenshot provided; logic unchanged)                  */
+/* -------------------------------------------------------------------------- */
 
 function StaffDashboardPage() {
   const navigate = useNavigate();
@@ -1846,7 +2010,7 @@ function StaffDashboardPage() {
 
   const [newUserForm, setNewUserForm] = useState(defaultUserForm);
 
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) {
       return;
@@ -1856,7 +2020,7 @@ function StaffDashboardPage() {
     event.target.value = '';
   };
 
-  const handleAddUser = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleAddUser = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!newUserForm.name.trim()) {
@@ -2263,45 +2427,44 @@ function StaffDashboardPage() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*  App                                                                        */
+/* -------------------------------------------------------------------------- */
+
 function App() {
   const [message, setMessage] = useState('');
 
   return (
     <BrowserRouter>
       <MessageModalContext.Provider value={setMessage}>
-      <div className="app-shell">
-        <header className="topbar">
-          <h1>Cedar Model Schools Portal</h1>
-        </header>
+        <div className="app-shell">
+          <main className="page-shell">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/admin-login" element={<StaffLoginPage />} />
+              <Route path="/staff-login" element={<StaffLoginPage />} />
+              <Route path="/parent-login" element={<ParentLoginPage />} />
 
-        <main className="page-shell">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/admin-login" element={<StaffLoginPage />} />
-            <Route path="/staff-login" element={<StaffLoginPage />} />
-            <Route path="/parent-login" element={<ParentLoginPage />} />
-            <Route path="/parent-dashboard" element={<ParentDashboardPage />} />
-            <Route path="/parent-results" element={<ParentResultsPage />} />
-            <Route path="/staff-dashboard" element={<StaffDashboardPage />} />
-            <Route path="/student-management" element={<StudentManagementPage />} />
-            <Route path="/student-add" element={<StudentAddPage />} />
-            <Route path="/student-empty" element={<EmptyStudentPage />} />
-            <Route path="/dashboard-awaiting-publication" element={<AwaitingPublicationPage />} />
-            <Route path="/dashboard-variant-one" element={<DashboardVariantPage variant="one" />} />
-            <Route path="/dashboard-variant-two" element={<DashboardVariantPage variant="two" />} />
-            <Route path="/dashboard-variant-three" element={<DashboardVariantPage variant="three" />} />
-            <Route path="/access-codes" element={<AccessCodeManagementPage />} />
-            <Route path="/access-codes-generate" element={<GenerateClassCodesPage />} />
-            <Route path="/parent-results-pending" element={<ParentResultsPendingPage />} />
-            <Route path="/parent-results-loading" element={<ParentResultsLoadingPage />} />
-            <Route path="/results-screen-report" element={<ResultsVariantPage variant="report" />} />
-            <Route path="/results-screen-secondary" element={<ResultsVariantPage variant="secondary" />} />
-            <Route path="/results-screen-tertiary" element={<ResultsVariantPage variant="tertiary" />} />
-            <Route path="*" element={<LandingPage />} />
-          </Routes>
-        </main>
-      </div>
-      <MessageModal message={message} onClose={() => setMessage('')} />
+              <Route path="/parent-dashboard" element={<ParentDashboardPage />} />
+              <Route path="/parent-dashboard-pending" element={<ParentDashboardPage status="processing" />} />
+              <Route path="/parent-dashboard-loading" element={<ParentDashboardPage status="loading" />} />
+              <Route path="/parent-dashboard-error" element={<ParentDashboardPage status="error" />} />
+              <Route path="/parent-results" element={<ParentResultsPage />} />
+              <Route path="/parent-results-pending" element={<ParentResultsPage status="processing" />} />
+
+              <Route path="/staff-dashboard" element={<StaffDashboardPage />} />
+              <Route path="/student-management" element={<StudentManagementPage />} />
+              <Route path="/student-empty" element={<StudentManagementPage initial={[]} />} />
+              <Route path="/student-import" element={<StudentImportPage />} />
+              <Route path="/student-add" element={<StudentAddPage />} />
+              <Route path="/access-codes" element={<AccessCodeManagementPage />} />
+              <Route path="/access-codes-generate" element={<GenerateClassCodesPage />} />
+
+              <Route path="*" element={<LandingPage />} />
+            </Routes>
+          </main>
+        </div>
+        <MessageModal message={message} onClose={() => setMessage('')} />
       </MessageModalContext.Provider>
     </BrowserRouter>
   );
