@@ -1,4 +1,15 @@
-import bcrypt from 'bcryptjs';
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.normalizePhone = normalizePhone;
+exports.parseCsvLine = parseCsvLine;
+exports.parseStudentRegisterCsv = parseStudentRegisterCsv;
+exports.generateAccessCode = generateAccessCode;
+exports.regenerateAccessCode = regenerateAccessCode;
+const node_crypto_1 = require("node:crypto");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function normalizePhone(phone) {
     const trimmed = phone.trim();
@@ -12,6 +23,10 @@ function normalizePhone(phone) {
     }
     if (digits.startsWith('0')) {
         return digits;
+    }
+    // Excel drops the leading zero of phone numbers: 8031234567 -> 08031234567.
+    if (digits.length === 10 && /^[789]/.test(digits)) {
+        return `0${digits}`;
     }
     if (digits.length === 11 && digits.startsWith('80')) {
         return `0${digits.slice(2)}`;
@@ -44,8 +59,9 @@ function parseCsvLine(line) {
     values.push(current.trim());
     return values;
 }
-export function parseStudentRegisterCsv(csvText) {
-    const lines = csvText.replace(/\r/g, '').split('\n').filter((line) => line.trim().length > 0);
+function parseStudentRegisterCsv(csvText) {
+    // Excel often prepends a BOM, which would otherwise corrupt the first header name.
+    const lines = csvText.replace(/^\uFEFF/, '').replace(/\r/g, '').split('\n').filter((line) => line.trim().length > 0);
     if (lines.length < 2) {
         return { preview: [], errors: ['No rows were provided for import.'] };
     }
@@ -91,14 +107,15 @@ export function parseStudentRegisterCsv(csvText) {
     }
     return { preview, errors };
 }
-export function generateAccessCode() {
+function generateAccessCode() {
+    // crypto.randomInt is cryptographically secure; Math.random() is predictable and must not be used for credentials.
     let code = '';
     for (let index = 0; index < 8; index += 1) {
-        code += ACCESS_CODE_ALPHABET[Math.floor(Math.random() * ACCESS_CODE_ALPHABET.length)];
+        code += ACCESS_CODE_ALPHABET[(0, node_crypto_1.randomInt)(ACCESS_CODE_ALPHABET.length)];
     }
     return code;
 }
-export function regenerateAccessCode(input) {
+function regenerateAccessCode(input) {
     let nextCode = input.currentCode;
     for (let attempt = 0; attempt < 20; attempt += 1) {
         const candidate = generateAccessCode();
@@ -107,7 +124,7 @@ export function regenerateAccessCode(input) {
             break;
         }
     }
-    const newHash = bcrypt.hashSync(nextCode, 10);
+    const newHash = bcryptjs_1.default.hashSync(nextCode, 10);
     return {
         newCode: nextCode,
         newHash,

@@ -100,7 +100,7 @@ export function ParentShell({
 /* Admin portal                                                        */
 /* ------------------------------------------------------------------ */
 
-export type AdminSection = 'overview' | 'students' | 'codes' | 'upload' | 'review' | 'audit';
+export type AdminSection = 'overview' | 'students' | 'codes' | 'upload' | 'review' | 'audit' | 'setup';
 
 const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: string }> = [
   { key: 'overview', label: 'Overview', icon: 'home', to: '/admin-overview' },
@@ -109,6 +109,7 @@ const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: st
   { key: 'upload', label: 'Results Upload', icon: 'upload', to: '/results-upload' },
   { key: 'review', label: 'Results Review', icon: 'doc', to: '/results-review' },
   { key: 'audit', label: 'Audit Log', icon: 'history', to: '/audit-log' },
+  { key: 'setup', label: 'School Setup', icon: 'doc', to: '/school-setup' },
 ];
 
 export function AdminShell({
@@ -140,7 +141,7 @@ export function AdminShell({
         <div className="ap-brand">
           <BarsLogo />
           <div>
-            <strong>Greenfield</strong>
+            <strong>Cedar Model Schools</strong>
             <small>School Results Portal</small>
           </div>
         </div>
@@ -163,10 +164,10 @@ export function AdminShell({
 
         <div className="ap-sidebar-foot">
           <div className="ap-user">
-            <span className="ap-avatar">AO</span>
+            <span className="ap-avatar">SM</span>
             <div>
-              <strong>Admin Office</strong>
-              <small>Administrator</small>
+              <strong>School staff</strong>
+              <small>Signed in account</small>
             </div>
           </div>
           <button type="button" className="ap-logout" onClick={() => void signOut(navigate)}>
@@ -194,7 +195,7 @@ export function AdminShell({
               <span className="ap-bell-dot" aria-hidden="true" />
             </button>
             <button type="button" className="ap-icon-button ap-avatar-button" aria-label="Your account">
-              AO
+              SM
             </button>
           </div>
         </header>

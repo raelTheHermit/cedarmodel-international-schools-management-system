@@ -5,7 +5,6 @@ import { ApiError, api } from '../api';
 import adminIcon from '../assets/icons/admin login.svg';
 import parentIcon from '../assets/icons/parent login.svg';
 import { BrandMark, Icon } from './icons';
-import { resolveParentStudent } from './data';
 
 /* ------------------------------------------------------------------ */
 /* Shared pieces                                                       */
@@ -279,10 +278,7 @@ export function ParentLoginPage() {
 
     try {
       const result = await api.loginParent({ admissionNumber: admission, accessCode: code });
-      const { student, nameKnown } = resolveParentStudent(result.user.admissionNumber);
-      navigate('/parent-dashboard', {
-        state: { parent: { name: nameKnown ? student.name : undefined, admissionNumber: result.user.admissionNumber } },
-      });
+      navigate('/parent-dashboard', { state: { admissionNumber: result.user.admissionNumber } });
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 403) {
         // The API answers 403 once an account is temporarily locked after repeated failures.
@@ -306,8 +302,8 @@ export function ParentLoginPage() {
 
           <div className="au-progress-card" aria-hidden="true">
             <p className="au-progress-label">Academic progress</p>
-            <p className="au-progress-title">Second term</p>
-            <p className="au-progress-status"><i />Published</p>
+            <p className="au-progress-title">School reports</p>
+            <p className="au-progress-status"><i />Secure access</p>
             <svg className="au-progress-chart" viewBox="0 0 218 84" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="au-progress-fill" x1="0" y1="0" x2="0" y2="1">
@@ -318,7 +314,7 @@ export function ParentLoginPage() {
               <path d="M0 62 C34 62 52 60 78 44 C104 28 130 10 168 8 L218 8 L218 84 L0 84 Z" fill="url(#au-progress-fill)" />
               <path d="M0 62 C34 62 52 60 78 44 C104 28 130 10 168 8 L218 8" fill="none" stroke="#fff" strokeWidth="1.4" />
             </svg>
-            <div className="au-progress-scale"><span>1ST</span><span>2ND</span><span>3RD</span></div>
+            <div className="au-progress-scale"><span>PRIVATE</span><span>VERIFIED</span><span>SECURE</span></div>
           </div>
         </>
       )}

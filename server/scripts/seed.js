@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const { randomInt } = require('node:crypto');
 const dotenv = require('dotenv');
 const pg = require('pg');
 const path = require('node:path');
@@ -39,13 +40,17 @@ function generateAccessCode() {
   let code = '';
 
   for (let i = 0; i < 8; i += 1) {
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    code += alphabet[randomInt(alphabet.length)];
   }
 
   return code;
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' || process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Demo seeding is disabled. Set ALLOW_DEMO_SEED=true in a non-production environment to load disposable sample data.');
+  }
+
   const databaseUrl = process.env.DATABASE_URL;
   const host = process.env.DB_HOST ?? process.env.PGHOST;
   const user = process.env.DB_USER ?? process.env.PGUSER;

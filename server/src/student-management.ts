@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
 export type StudentImportPreview = {
@@ -15,7 +16,7 @@ export type ParseStudentRegisterCsvResult = {
 
 const ACCESS_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string): string {
   const trimmed = phone.trim();
   if (!trimmed) return '';
 
@@ -30,6 +31,11 @@ function normalizePhone(phone: string): string {
     return digits;
   }
 
+  // Excel drops the leading zero of phone numbers: 8031234567 -> 08031234567.
+  if (digits.length === 10 && /^[789]/.test(digits)) {
+    return `0${digits}`;
+  }
+
   if (digits.length === 11 && digits.startsWith('80')) {
     return `0${digits.slice(2)}`;
   }
@@ -37,7 +43,7 @@ function normalizePhone(phone: string): string {
   return digits;
 }
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const values: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -69,7 +75,8 @@ function parseCsvLine(line: string): string[] {
 }
 
 export function parseStudentRegisterCsv(csvText: string): ParseStudentRegisterCsvResult {
-  const lines = csvText.replace(/\r/g, '').split('\n').filter((line) => line.trim().length > 0);
+  // Excel often prepends a BOM, which would otherwise corrupt the first header name.
+  const lines = csvText.replace(/^\uFEFF/, '').replace(/\r/g, '').split('\n').filter((line) => line.trim().length > 0);
   if (lines.length < 2) {
     return { preview: [], errors: ['No rows were provided for import.'] };
   }
@@ -126,9 +133,10 @@ export function parseStudentRegisterCsv(csvText: string): ParseStudentRegisterCs
 }
 
 export function generateAccessCode(): string {
+  // crypto.randomInt is cryptographically secure; Math.random() is predictable and must not be used for credentials.
   let code = '';
   for (let index = 0; index < 8; index += 1) {
-    code += ACCESS_CODE_ALPHABET[Math.floor(Math.random() * ACCESS_CODE_ALPHABET.length)];
+    code += ACCESS_CODE_ALPHABET[randomInt(ACCESS_CODE_ALPHABET.length)];
   }
   return code;
 }

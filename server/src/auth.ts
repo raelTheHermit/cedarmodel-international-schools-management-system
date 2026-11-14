@@ -1,9 +1,14 @@
-import bcrypt from 'bcryptjs';
-import type { NextFunction, Request, Response } from 'express';
-import express from 'express';
-import { Pool } from 'pg';
-import { z } from 'zod';
-import { getDatabaseConfig } from './database-config.js';
+import bcrypt from "bcryptjs";
+import type { NextFunction, Request, Response } from "express";
+import express from "express";
+import { Pool } from "pg";
+import { z } from "zod";
+import { getDatabaseConfig } from "./database-config.js";
+import {
+  asyncHandler,
+  createSessionToken,
+  verifySessionToken,
+} from "./session.js";
 
 declare global {
   namespace Express {
@@ -14,10 +19,10 @@ declare global {
   }
 }
 
-export const GENERIC_AUTH_ERROR = 'Invalid credentials or account locked.';
-export const SESSION_COOKIE_NAME = 'school_portal_session';
+export const GENERIC_AUTH_ERROR = "Invalid credentials or account locked.";
+export const SESSION_COOKIE_NAME = "school_portal_session";
 
-export type StaffRole = 'superadmin' | 'teacher';
+export type StaffRole = "superadmin" | "teacher";
 
 export type StaffUserRecord = {
   id: number;
@@ -35,9 +40,14 @@ export type StudentRecord = {
 
 export type AuthRepository = {
   findStaffByEmail: (email: string) => Promise<StaffUserRecord | null>;
-  findStudentByAdmissionNumber: (admissionNumber: string) => Promise<StudentRecord | null>;
+  findStudentByAdmissionNumber: (
+    admissionNumber: string,
+  ) => Promise<StudentRecord | null>;
   findParentAccessCodeHash: (studentId: number) => Promise<string | null>;
-  countRecentFailedAttempts: (subject: string | null, ipAddress: string) => Promise<number>;
+  countRecentFailedAttempts: (
+    subject: string | null,
+    ipAddress: string,
+  ) => Promise<number>;
   recordLoginAttempt: (input: {
     subject: string | null;
     ipAddress: string;
@@ -46,8 +56,8 @@ export type AuthRepository = {
 };
 
 export type SessionUser =
-  | { kind: 'staff'; id: number; email: string; role: StaffRole }
-  | { kind: 'parent'; id: number; admissionNumber: string; classId: number };
+  | { kind: "staff"; id: number; email: string; role: StaffRole }
+  | { kind: "parent"; id: number; admissionNumber: string; classId: number };
 
 const staffLoginSchema = z.object({
   email: z.string().trim().email(),
@@ -61,61 +71,64 @@ const parentLoginSchema = z.object({
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: 'strict' as const,
-  secure: process.env.NODE_ENV === 'production',
-  path: '/',
+  sameSite: "strict" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
   maxAge: 1000 * 60 * 60 * 8,
 };
+
+// Compared against when the email is unknown, so "no such account" costs the same time as "wrong password".
+const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 function parseCookies(rawCookieHeader?: string): Record<string, string> {
   const cookies: Record<string, string> = {};
   if (!rawCookieHeader) return cookies;
 
-  for (const part of rawCookieHeader.split(';')) {
+  for (const part of rawCookieHeader.split(";")) {
     const trimmed = part.trim();
     if (!trimmed) continue;
 
-    const equalsIndex = trimmed.indexOf('=');
+    const equalsIndex = trimmed.indexOf("=");
     const key = equalsIndex >= 0 ? trimmed.slice(0, equalsIndex) : trimmed;
-    const value = equalsIndex >= 0 ? trimmed.slice(equalsIndex + 1) : '';
-    cookies[key] = decodeURIComponent(value);
+    const value = equalsIndex >= 0 ? trimmed.slice(equalsIndex + 1) : "";
+
+    try {
+      cookies[key] = decodeURIComponent(value);
+    } catch {
+      // A malformed cookie must not take the request down; treat it as absent.
+    }
   }
 
   return cookies;
 }
 
 function getRequestIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
-  if (Array.isArray(forwarded)) return forwarded[0]?.trim() ?? 'unknown';
-  return req.socket.remoteAddress ?? 'unknown';
+  // `trust proxy` is set below, so req.ip is the real client address and the
+  // client cannot choose it by sending its own X-Forwarded-For header.
+  return req.ip ?? req.socket.remoteAddress ?? "unknown";
 }
 
 function readSessionUser(req: Request): SessionUser | null {
   const cookies = req.cookies ?? parseCookies(req.headers.cookie);
   req.cookies = cookies;
-
-  const cookieValue = cookies[SESSION_COOKIE_NAME];
-  if (!cookieValue) return null;
-
-  try {
-    const parsed = JSON.parse(cookieValue) as SessionUser;
-    return parsed && typeof parsed.kind === 'string' ? parsed : null;
-  } catch {
-    return null;
-  }
+  return verifySessionToken(cookies[SESSION_COOKIE_NAME]);
 }
 
 function setSessionCookie(res: Response, user: SessionUser): void {
-  res.cookie(SESSION_COOKIE_NAME, JSON.stringify(user), cookieOptions);
+  res.cookie(SESSION_COOKIE_NAME, createSessionToken(user), cookieOptions);
 }
 
 function clearSessionCookie(res: Response): void {
-  res.clearCookie(SESSION_COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieOptions.secure });
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "strict",
+    secure: cookieOptions.secure,
+  });
 }
 
 export function createCorsMiddleware() {
-  const allowedOrigin = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+  const allowedOrigin = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const origin = req.headers.origin;
@@ -125,12 +138,16 @@ export function createCorsMiddleware() {
       return;
     }
 
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header("Access-Control-Allow-Origin", allowedOrigin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Vary", "Origin");
 
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
       res.sendStatus(204);
       return;
     }
@@ -139,21 +156,37 @@ export function createCorsMiddleware() {
   };
 }
 
-async function isLockedOut(repo: AuthRepository, subject: string | null, ipAddress: string): Promise<boolean> {
-  const failedAttempts = await repo.countRecentFailedAttempts(subject, ipAddress);
+async function isLockedOut(
+  repo: AuthRepository,
+  subject: string | null,
+  ipAddress: string,
+): Promise<boolean> {
+  const failedAttempts = await repo.countRecentFailedAttempts(
+    subject,
+    ipAddress,
+  );
   return failedAttempts >= 5;
 }
 
-async function failAuth(req: Request, res: Response, repo: AuthRepository, subject: string | null): Promise<void> {
+async function failAuth(
+  req: Request,
+  res: Response,
+  repo: AuthRepository,
+  subject: string | null,
+): Promise<void> {
   const ipAddress = getRequestIp(req);
   await repo.recordLoginAttempt({ subject, ipAddress, success: false });
   res.status(401).json({ message: GENERIC_AUTH_ERROR });
 }
 
-export function requireStaff(req: Request, res: Response, next: NextFunction): void {
+export function requireStaff(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const user = readSessionUser(req);
-  if (user?.kind !== 'staff') {
-    res.status(403).json({ message: 'Forbidden' });
+  if (user?.kind !== "staff") {
+    res.status(403).json({ message: "Forbidden" });
     return;
   }
 
@@ -166,8 +199,8 @@ export function requireRole(role: StaffRole | StaffRole[]) {
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = readSessionUser(req);
-    if (user?.kind !== 'staff' || !allowedRoles.includes(user.role)) {
-      res.status(403).json({ message: 'Forbidden' });
+    if (user?.kind !== "staff" || !allowedRoles.includes(user.role)) {
+      res.status(403).json({ message: "Forbidden" });
       return;
     }
 
@@ -176,10 +209,14 @@ export function requireRole(role: StaffRole | StaffRole[]) {
   };
 }
 
-export function requireParent(req: Request, res: Response, next: NextFunction): void {
+export function requireParent(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const user = readSessionUser(req);
-  if (user?.kind !== 'parent') {
-    res.status(403).json({ message: 'Forbidden' });
+  if (user?.kind !== "parent") {
+    res.status(403).json({ message: "Forbidden" });
     return;
   }
 
@@ -203,13 +240,14 @@ export function buildRecentFailedAttemptsQuery(): string {
 function createDefaultRepository(): AuthRepository {
   const pool = new Pool({
     ...getDatabaseConfig(),
-    max: 10,
+    max: Number(process.env.DB_POOL_MAX ?? 5),
   });
 
   return {
     async findStaffByEmail(email: string) {
+      // Deactivated staff must not be able to sign in.
       const result = await pool.query(
-        'SELECT id, email, password_hash AS "passwordHash", role FROM staff_users WHERE email = $1 LIMIT 1',
+        'SELECT id, email, password_hash AS "passwordHash", role FROM staff_users WHERE email = $1 AND active = true LIMIT 1',
         [email.toLowerCase()],
       );
 
@@ -225,8 +263,9 @@ function createDefaultRepository(): AuthRepository {
     },
 
     async findStudentByAdmissionNumber(admissionNumber: string) {
+      // Admission numbers are stored uppercase by the admin API; match case-insensitively for older rows.
       const result = await pool.query(
-        'SELECT id, admission_number AS "admissionNumber", class_id AS "classId", active FROM students WHERE admission_number = $1 LIMIT 1',
+        'SELECT id, admission_number AS "admissionNumber", class_id AS "classId", active FROM students WHERE upper(admission_number) = upper($1) LIMIT 1',
         [admissionNumber],
       );
 
@@ -243,7 +282,9 @@ function createDefaultRepository(): AuthRepository {
 
     async findParentAccessCodeHash(studentId: number) {
       const result = await pool.query(
-        'SELECT code_hash AS "codeHash" FROM access_codes WHERE student_id = $1 ORDER BY id DESC LIMIT 1',
+        `SELECT code_hash AS "codeHash" FROM access_codes
+         WHERE student_id = $1 AND (code_expires_at IS NULL OR code_expires_at > NOW())
+         ORDER BY id DESC LIMIT 1`,
         [studentId],
       );
 
@@ -252,14 +293,17 @@ function createDefaultRepository(): AuthRepository {
     },
 
     async countRecentFailedAttempts(subject: string | null, ipAddress: string) {
-      const result = await pool.query(buildRecentFailedAttemptsQuery(), [subject ?? null, ipAddress]);
+      const result = await pool.query(buildRecentFailedAttemptsQuery(), [
+        subject ?? null,
+        ipAddress,
+      ]);
 
       return Number(result.rows[0]?.failedCount ?? 0);
     },
 
     async recordLoginAttempt({ subject, ipAddress, success }) {
       await pool.query(
-        'INSERT INTO login_attempts (admission_number, ip_address, success) VALUES ($1, $2, $3)',
+        "INSERT INTO login_attempts (admission_number, ip_address, success) VALUES ($1, $2, $3)",
         [subject, ipAddress, success],
       );
     },
@@ -270,90 +314,111 @@ export function createAuthApp(options?: { repo?: AuthRepository }) {
   const repo = options?.repo ?? createDefaultRepository();
   const app = express();
 
-  app.use(express.json({ limit: '1mb' }));
+  // One proxy hop (Vercel / Render): lets req.ip reflect the real client.
+  app.set("trust proxy", 1);
+
+  app.use(express.json({ limit: "1mb" }));
   app.use((req, _res, next) => {
     req.cookies = parseCookies(req.headers.cookie);
     next();
   });
 
-  app.post('/api/auth/staff', async (req, res) => {
-    const parsed = staffLoginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return failAuth(req, res, repo, null);
-    }
+  app.post(
+    "/api/auth/staff",
+    asyncHandler(async (req, res) => {
+      const parsed = staffLoginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return failAuth(req, res, repo, null);
+      }
 
-    const { email, password } = parsed.data;
-    const ipAddress = getRequestIp(req);
+      const { email, password } = parsed.data;
+      const subject = email.toLowerCase();
+      const ipAddress = getRequestIp(req);
 
-    if (await isLockedOut(repo, email.toLowerCase(), ipAddress)) {
-      await repo.recordLoginAttempt({ subject: email.toLowerCase(), ipAddress, success: false });
-      return res.status(403).json({ message: GENERIC_AUTH_ERROR });
-    }
+      if (await isLockedOut(repo, subject, ipAddress)) {
+        await repo.recordLoginAttempt({ subject, ipAddress, success: false });
+        return res.status(403).json({ message: GENERIC_AUTH_ERROR });
+      }
 
-    const user = await repo.findStaffByEmail(email);
-    if (!user) {
-      return failAuth(req, res, repo, email.toLowerCase());
-    }
+      const user = await repo.findStaffByEmail(email);
+      // Always run one bcrypt comparison so response time does not reveal whether the email exists.
+      const passwordMatches = await bcrypt.compare(
+        password,
+        user?.passwordHash ?? DUMMY_HASH,
+      );
+      if (!user || !passwordMatches) {
+        return failAuth(req, res, repo, subject);
+      }
 
-    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatches) {
-      return failAuth(req, res, repo, email.toLowerCase());
-    }
+      await repo.recordLoginAttempt({ subject, ipAddress, success: true });
+      const sessionUser: SessionUser = {
+        kind: "staff",
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+      setSessionCookie(res, sessionUser);
+      return res.json({ message: "Staff login successful", user: sessionUser });
+    }),
+  );
 
-    await repo.recordLoginAttempt({ subject: email.toLowerCase(), ipAddress, success: true });
-    const sessionUser: SessionUser = { kind: 'staff', id: user.id, email: user.email, role: user.role };
-    setSessionCookie(res, sessionUser);
-    return res.json({ message: 'Staff login successful', user: sessionUser });
-  });
+  app.post(
+    "/api/auth/parent",
+    asyncHandler(async (req, res) => {
+      const parsed = parentLoginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return failAuth(req, res, repo, null);
+      }
 
-  app.post('/api/auth/parent', async (req, res) => {
-    const parsed = parentLoginSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return failAuth(req, res, repo, null);
-    }
+      const { admissionNumber, accessCode } = parsed.data;
+      const ipAddress = getRequestIp(req);
+      const subject = admissionNumber.trim().toUpperCase();
 
-    const { admissionNumber, accessCode } = parsed.data;
-    const ipAddress = getRequestIp(req);
-    const subject = admissionNumber.trim();
+      if (await isLockedOut(repo, subject, ipAddress)) {
+        await repo.recordLoginAttempt({ subject, ipAddress, success: false });
+        return res.status(403).json({ message: GENERIC_AUTH_ERROR });
+      }
 
-    if (await isLockedOut(repo, subject, ipAddress)) {
-      await repo.recordLoginAttempt({ subject, ipAddress, success: false });
-      return res.status(403).json({ message: GENERIC_AUTH_ERROR });
-    }
+      const student = await repo.findStudentByAdmissionNumber(subject);
+      const storedHash = student?.active
+        ? await repo.findParentAccessCodeHash(student.id)
+        : null;
+      const codeMatches = await bcrypt.compare(
+        accessCode,
+        storedHash ?? DUMMY_HASH,
+      );
 
-    const student = await repo.findStudentByAdmissionNumber(subject);
-    if (!student || !student.active) {
-      return failAuth(req, res, repo, subject);
-    }
+      if (!student || !student.active || !storedHash || !codeMatches) {
+        return failAuth(req, res, repo, subject);
+      }
 
-    const storedHash = await repo.findParentAccessCodeHash(student.id);
-    if (!storedHash || !(await bcrypt.compare(accessCode, storedHash))) {
-      return failAuth(req, res, repo, subject);
-    }
+      await repo.recordLoginAttempt({ subject, ipAddress, success: true });
 
-    await repo.recordLoginAttempt({ subject, ipAddress, success: true });
+      const sessionUser: SessionUser = {
+        kind: "parent",
+        id: student.id,
+        admissionNumber: student.admissionNumber,
+        classId: student.classId,
+      };
 
-    const sessionUser: SessionUser = {
-      kind: 'parent',
-      id: student.id,
-      admissionNumber: student.admissionNumber,
-      classId: student.classId,
-    };
+      setSessionCookie(res, sessionUser);
+      return res.json({
+        message: "Parent login successful",
+        user: sessionUser,
+      });
+    }),
+  );
 
-    setSessionCookie(res, sessionUser);
-    return res.json({ message: 'Parent login successful', user: sessionUser });
-  });
-
-  app.post('/api/auth/logout', (_req, res) => {
+  app.post("/api/auth/logout", (_req, res) => {
     clearSessionCookie(res);
-    res.json({ message: 'Logged out' });
+    res.json({ message: "Logged out" });
   });
 
-  app.get('/api/staff/me', requireStaff, (req, res) => {
+  app.get("/api/staff/me", requireStaff, (req, res) => {
     res.json({ user: req.user });
   });
 
-  app.get('/api/parent/me', requireParent, (req, res) => {
+  app.get("/api/parent/me", requireParent, (req, res) => {
     res.json({ user: req.user });
   });
 
