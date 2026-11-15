@@ -33,7 +33,10 @@ die()  { printf '\n%sStopped:%s %s\n' "$R" "$N" "$1" >&2; exit 1; }
 ask() { # ask "question" default(y|n)
   local prompt="$1" default="$2" reply
   if [ ! -t 0 ]; then [ "$default" = "y" ]; return; fi
-  read -r -p "  $prompt [$([ "$default" = y ] && echo Y/n || echo y/N)] " reply || true
+  # Bash accepts `read -p`; zsh interprets -p as reading from a coprocess.
+  # Keep the script's prompts usable when it is launched from a zsh shell.
+  printf '  %s [%s] ' "$prompt" "$([ "$default" = y ] && echo Y/n || echo y/N)"
+  read -r reply || true
   reply="${reply:-$default}"
   [[ "$reply" =~ ^[Yy] ]]
 }
@@ -90,11 +93,16 @@ if [ "$SKIP_DB" -eq 0 ]; then
     ask "Continue WITHOUT a backup?" n || die "Install postgresql-client and run this again."
   else
     BACKUP="$HOME/cedarmodel-backup-$(date +%Y%m%d-%H%M%S).sql"
-    if pg_dump "$DB_URL" > "$BACKUP" 2>/dev/null; then
+    PG_DUMP_ERROR="$(mktemp)"
+    if pg_dump "$DB_URL" > "$BACKUP" 2>"$PG_DUMP_ERROR"; then
+      rm -f "$PG_DUMP_ERROR"
       ok "Backup saved to $BACKUP"
     else
       rm -f "$BACKUP"
-      warn "pg_dump failed (wrong URL, no network, or version mismatch)."
+      warn "pg_dump failed. PostgreSQL reported:"
+      while IFS= read -r line; do [ -n "$line" ] && warn "  $line"; done < "$PG_DUMP_ERROR"
+      rm -f "$PG_DUMP_ERROR"
+      warn "Check DATABASE_URL in $REPO/.env, network access, and pg_dump compatibility with your server."
       ask "Continue WITHOUT a backup?" n || die "Fix the database connection and run this again."
     fi
   fi
