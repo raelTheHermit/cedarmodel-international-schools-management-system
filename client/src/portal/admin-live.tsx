@@ -1,18 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, api } from '../api';
-import type { AccessStatusRow, AdminStudent, ClassRow, ImportPreview, IssuedCode, StaffUser } from '../api';
+import type { AccessStatusRow, AdminStudent, ClassRow, ImportPreview, IssuedCode, StaffUser, TableInput } from '../api';
 import { initialsOf } from './data';
 import { Icon } from './icons';
 import { useMessageModal } from './message-modal';
+import { StaffContext } from './staff-context';
 import { AdminPageHeader, AdminShell } from './shells';
 
-function Initials({ name }: { name: string }) {
+export function Initials({ name }: { name: string }) {
   return <span className="ap-initials" aria-hidden="true">{initialsOf(name)}</span>;
 }
 
-function InlineSearch({ value, onChange, placeholder, className = '' }: { value: string; onChange: (next: string) => void; placeholder: string; className?: string }) {
+export function InlineSearch({ value, onChange, placeholder, className = '' }: { value: string; onChange: (next: string) => void; placeholder: string; className?: string }) {
   return (
     <label className={`ap-inline-search ${className}`.trim()}>
       <Icon name="search" size={15} />
@@ -21,11 +22,11 @@ function InlineSearch({ value, onChange, placeholder, className = '' }: { value:
   );
 }
 
-function Pill({ tone, children }: { tone: 'success' | 'muted'; children: ReactNode }) {
+export function Pill({ tone, children }: { tone: 'success' | 'muted'; children: ReactNode }) {
   return <span className={`ap-pill ${tone}`}><i />{children}</span>;
 }
 
-function FormFooter({ children }: { children: ReactNode }) {
+export function FormFooter({ children }: { children: ReactNode }) {
   return <div className="ap-form-footer">{children}</div>;
 }
 
@@ -33,7 +34,7 @@ function FormFooter({ children }: { children: ReactNode }) {
 /* Hooks and guard                                                     */
 /* ------------------------------------------------------------------ */
 
-function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
+export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   const [state, setState] = useState<{ data: T | null; error: string; loading: boolean }>({ data: null, error: '', loading: true });
   const [tick, setTick] = useState(0);
 
@@ -56,7 +57,7 @@ function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   return { ...state, reload: useCallback(() => setTick((value) => value + 1), []) };
 }
 
-function useDebounced<T>(value: T, delay = 300): T {
+export function useDebounced<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), delay);
@@ -65,11 +66,10 @@ function useDebounced<T>(value: T, delay = 300): T {
   return debounced;
 }
 
-function errorText(caught: unknown) {
+export function errorText(caught: unknown) {
   return caught instanceof ApiError ? caught.message : 'We couldn’t reach the server. Check your connection and try again.';
 }
 
-const StaffContext = createContext<StaffUser | null>(null);
 
 export function useStaff(): StaffUser {
   const staff = useContext(StaffContext);
@@ -91,7 +91,7 @@ export function RequireStaff({ role, children }: { role?: 'superadmin'; children
   return <StaffContext.Provider value={user}>{children}</StaffContext.Provider>;
 }
 
-function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+export function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <section className="ap-empty" role="alert">
       <h3>Something went wrong</h3>
@@ -103,7 +103,7 @@ function LoadError({ message, onRetry }: { message: string; onRetry: () => void 
   );
 }
 
-function ClassFilter({ classes, value, onChange }: { classes: ClassRow[]; value: number | 'all'; onChange: (next: number | 'all') => void }) {
+export function ClassFilter({ classes, value, onChange }: { classes: ClassRow[]; value: number | 'all'; onChange: (next: number | 'all') => void }) {
   return (
     <span className="ap-select compact">
       <select value={value} aria-label="Filter by class" onChange={(event) => onChange(event.target.value === 'all' ? 'all' : Number(event.target.value))}>
@@ -126,11 +126,17 @@ export function StudentManagementPage() {
   const staff = useStaff();
   const isAdmin = staff.role === 'superadmin';
 
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const [classId, setClassId] = useState<number | 'all'>('all');
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [busyId, setBusyId] = useState<number | null>(null);
   const debounced = useDebounced(query);
+
+  // The shell's search box navigates here with ?q=; follow it when it changes.
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
 
   const classes = useLoad(() => api.listClasses(), []);
   const students = useLoad(
@@ -268,12 +274,33 @@ export function StudentManagementPage() {
 
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 
+/** CSV is sent as text; Excel (.xlsx) is sent as base64 and parsed on the server. */
+export async function readTableFile(file: File): Promise<TableInput> {
+  if (file.name.toLowerCase().endsWith('.xlsx')) {
+    const buffer = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    const chunk = 0x8000;
+    for (let index = 0; index < buffer.length; index += chunk) {
+      binary += String.fromCharCode(...buffer.subarray(index, index + chunk));
+    }
+    return { xlsxBase64: btoa(binary) };
+  }
+  return { csv: await file.text() };
+}
+
+export function isAcceptedTableFile(file: File): string {
+  const lower = file.name.toLowerCase();
+  if (!lower.endsWith('.csv') && !lower.endsWith('.xlsx')) return 'Choose a CSV or Excel (.xlsx) file.';
+  if (file.size > MAX_IMPORT_BYTES) return 'That file is larger than 2 MB. Split it into smaller files.';
+  return '';
+}
+
 export function StudentImportPage() {
   const navigate = useNavigate();
   const showMessage = useMessageModal();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [csv, setCsv] = useState('');
+  const [payload, setPayload] = useState<TableInput | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -283,23 +310,19 @@ export function StudentImportPage() {
     setPreview(null);
     setError('');
 
-    if (!candidate.name.toLowerCase().endsWith('.csv')) {
+    const problem = isAcceptedTableFile(candidate);
+    if (problem) {
       setFile(null);
-      setError('Choose a CSV file. In Excel, use File → Save As → CSV.');
-      return;
-    }
-    if (candidate.size > MAX_IMPORT_BYTES) {
-      setFile(null);
-      setError('That file is larger than 2 MB. Split the register and import it in parts.');
+      setError(problem);
       return;
     }
 
     setBusy(true);
     try {
-      const text = await candidate.text();
-      const result = await api.previewStudentImport(text);
+      const input = await readTableFile(candidate);
+      const result = await api.previewStudentImport(input);
       setFile(candidate);
-      setCsv(text);
+      setPayload(input);
       setPreview(result);
     } catch (caught) {
       setFile(null);
@@ -310,11 +333,11 @@ export function StudentImportPage() {
   };
 
   const commit = async () => {
-    if (!csv || busy) return;
+    if (!payload || busy) return;
     setBusy(true);
     try {
-      const result = await api.commitStudentImport(csv);
-      showMessage(`${result.inserted} students imported. ${result.skippedDuplicates} duplicates, ${result.skippedUnknownClass} rows with an unknown class, ${result.skippedInvalidPhone} rows with an invalid phone, and ${result.invalidRows} incomplete rows were skipped.`);
+      const result = await api.commitStudentImport(payload);
+      showMessage(`${result.inserted} students imported. Skipped: ${result.skippedDuplicates} duplicates, ${result.skippedUnknownClass} unknown classes, ${result.skippedInvalidPhone} invalid phone numbers.`);
       navigate('/student-management');
     } catch (caught) {
       setError(errorText(caught));
@@ -328,7 +351,7 @@ export function StudentImportPage() {
       <div className="ap-page narrow">
         <AdminPageHeader
           title="Import student register"
-          subtitle="Add existing student records from a CSV register."
+          subtitle="Add existing student records from a CSV or Excel register."
           backLabel="Back to student management"
           onBack={() => navigate('/student-management')}
         />
@@ -336,16 +359,16 @@ export function StudentImportPage() {
         <section className="ap-card">
           <p className="ap-kicker">Bulk import</p>
           <h3 className="ap-card-title">Upload your student register</h3>
-          <p className="ap-card-note">Required columns: First name, Last name, Admission number, Class, Parent phone number. Other columns are ignored and never stored.</p>
+          <p className="ap-card-note">Required columns: First name, Last name, Admission number, Class, Parent phone number. Other columns are ignored and never stored. Classes must already exist.</p>
 
           <div className={file ? 'ap-dropzone has-file' : 'ap-dropzone'}>
             <span className="ap-dropzone-icon"><Icon name={file ? 'check' : 'upload'} size={18} /></span>
             <p className="ap-dropzone-title">{file ? file.name : 'Choose a register to upload'}</p>
-            <p className="ap-dropzone-note">{busy ? 'Checking file…' : 'CSV files up to 2 MB'}</p>
+            <p className="ap-dropzone-note">{busy ? 'Checking file…' : 'CSV or Excel (.xlsx) files up to 2 MB'}</p>
             <button type="button" className="ap-text-link" disabled={busy} onClick={() => inputRef.current?.click()}>
               {file ? 'Choose a different file' : 'Browse files'}
             </button>
-            <input ref={inputRef} type="file" accept=".csv" hidden onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ''; }} />
+            <input ref={inputRef} type="file" accept=".csv,.xlsx" hidden onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ''; }} />
           </div>
 
           {error && <p className="ap-field-error block" role="alert">{error}</p>}
@@ -354,9 +377,8 @@ export function StudentImportPage() {
             <div className="ap-note-box">
               <strong>Ready to import {preview.counts.new} students</strong>
               <span>
-                {preview.counts.duplicate} duplicate admission numbers and {preview.counts.unknownClass} rows with a class that doesn’t exist will be skipped.
-                {preview.counts.invalidPhone > 0 && ` ${preview.counts.invalidPhone} rows have an invalid parent phone number.`}
-                {preview.counts.invalid > 0 && ` ${preview.counts.invalid} rows are missing required fields.`}
+                Will be skipped: {preview.counts.duplicate} duplicate admission numbers, {preview.counts.unknownClass} rows with a class that doesn’t exist, {preview.counts.invalidPhone} rows with an invalid phone number
+                {preview.counts.invalid > 0 ? `, ${preview.counts.invalid} rows missing required fields` : ''}.
               </span>
               {preview.errors.slice(0, 5).map((message) => <span key={message}>{message}</span>)}
             </div>

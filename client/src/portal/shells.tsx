@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import brandIcon from '../assets/icons/logo.png';
 import { BarsLogo, Icon } from './icons';
 import type { IconName } from './icons';
 import { initialsOf } from './data';
+import { useStaffOptional } from './staff-context';
 
 async function signOut(navigate: ReturnType<typeof useNavigate>) {
   try {
@@ -26,6 +27,7 @@ export function ParentShell({
   section,
   title,
   studentName,
+  schoolName,
   navState,
   capsLabel = false,
   children,
@@ -33,6 +35,8 @@ export function ParentShell({
   section: ParentSection;
   title: string;
   studentName: string;
+  /** From the school profile an administrator maintains. */
+  schoolName?: string;
   navState?: unknown;
   /** The design uses an uppercase, tracked "PARENT PORTAL" label on the error, pending and loading screens. */
   capsLabel?: boolean;
@@ -47,8 +51,8 @@ export function ParentShell({
         <div className="pp-brand">
           <img src={brandIcon} alt="" />
           <div>
-            <strong>MIRACLE SCHOOL</strong>
-            <small>NURSERY, PRIMARY AND SECONDARY</small>
+            <strong>{(schoolName || 'School portal').toUpperCase()}</strong>
+            <small>PARENT RESULTS PORTAL</small>
           </div>
         </div>
 
@@ -85,9 +89,9 @@ export function ParentShell({
             <p className={capsLabel ? 'pp-portal-label caps' : 'pp-portal-label'}>Parent Portal</p>
             <h1 className="pp-page-title">{title}</h1>
           </div>
-          <button type="button" className="pp-avatar" aria-label="Signed in as parent">
+          <span className="pp-avatar" role="img" aria-label="Signed in as parent">
             {initialsOf(studentName)}
-          </button>
+          </span>
         </header>
 
         <div className="pp-content">{children}</div>
@@ -97,19 +101,20 @@ export function ParentShell({
 }
 
 /* ------------------------------------------------------------------ */
-/* Admin portal                                                        */
+/* Staff portal                                                        */
 /* ------------------------------------------------------------------ */
 
-export type AdminSection = 'overview' | 'students' | 'codes' | 'upload' | 'review' | 'audit' | 'setup';
+export type AdminSection = 'overview' | 'students' | 'attendance' | 'codes' | 'upload' | 'review' | 'audit' | 'setup';
 
-const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: string }> = [
-  { key: 'overview', label: 'Overview', icon: 'home', to: '/admin-overview' },
-  { key: 'students', label: 'Student Management', icon: 'users', to: '/student-management' },
-  { key: 'codes', label: 'Access Codes', icon: 'lock', to: '/access-codes' },
-  { key: 'upload', label: 'Results Upload', icon: 'upload', to: '/results-upload' },
-  { key: 'review', label: 'Results Review', icon: 'doc', to: '/results-review' },
-  { key: 'audit', label: 'Audit Log', icon: 'history', to: '/audit-log' },
-  { key: 'setup', label: 'School Setup', icon: 'doc', to: '/school-setup' },
+const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: string; adminOnly: boolean }> = [
+  { key: 'overview', label: 'Overview', icon: 'home', to: '/admin-overview', adminOnly: true },
+  { key: 'students', label: 'Student Management', icon: 'users', to: '/student-management', adminOnly: false },
+  { key: 'attendance', label: 'Attendance', icon: 'check', to: '/attendance', adminOnly: false },
+  { key: 'codes', label: 'Access Codes', icon: 'lock', to: '/access-codes', adminOnly: true },
+  { key: 'upload', label: 'Results Upload', icon: 'upload', to: '/results-upload', adminOnly: false },
+  { key: 'review', label: 'Results Review', icon: 'doc', to: '/results-review', adminOnly: true },
+  { key: 'audit', label: 'Audit Log', icon: 'history', to: '/audit-log', adminOnly: true },
+  { key: 'setup', label: 'School Setup', icon: 'doc', to: '/school-setup', adminOnly: true },
 ];
 
 export function AdminShell({
@@ -122,7 +127,14 @@ export function AdminShell({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const staff = useStaffOptional();
   const searchRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
+
+  const isAdmin = staff?.role === 'superadmin';
+  const nav = adminNav.filter((item) => isAdmin || !item.adminOnly);
+  const label = staff ? staff.email : 'Signed in';
+  const initials = staff ? staff.email.slice(0, 2).toUpperCase() : '··';
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -135,6 +147,13 @@ export function AdminShell({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  // The search box finds students: it opens the student register filtered to what was typed.
+  const runSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const text = search.trim();
+    navigate(text ? `/student-management?q=${encodeURIComponent(text)}` : '/student-management');
+  };
+
   return (
     <div className="ap-shell">
       <aside className="ap-sidebar">
@@ -146,9 +165,9 @@ export function AdminShell({
           </div>
         </div>
 
-        <p className="ap-nav-label">Administration</p>
-        <nav className="ap-nav" aria-label="Admin navigation">
-          {adminNav.map((item) => (
+        <p className="ap-nav-label">{isAdmin ? 'Administration' : 'Teaching'}</p>
+        <nav className="ap-nav" aria-label="Staff navigation">
+          {nav.map((item) => (
             <button
               key={item.key}
               type="button"
@@ -164,10 +183,10 @@ export function AdminShell({
 
         <div className="ap-sidebar-foot">
           <div className="ap-user">
-            <span className="ap-avatar">SM</span>
+            <span className="ap-avatar">{initials}</span>
             <div>
-              <strong>School staff</strong>
-              <small>Signed in account</small>
+              <strong title={label}>{label.length > 22 ? `${label.slice(0, 21)}…` : label}</strong>
+              <small>{isAdmin ? 'Administrator' : 'Teacher'}</small>
             </div>
           </div>
           <button type="button" className="ap-logout" onClick={() => void signOut(navigate)}>
@@ -180,23 +199,26 @@ export function AdminShell({
       <div className="ap-main">
         <header className="ap-topbar">
           <div>
-            <p className="ap-portal-label">Admin Portal</p>
+            <p className="ap-portal-label">{isAdmin ? 'Admin Portal' : 'Teacher Portal'}</p>
             <h1 className="ap-page-title">{title}</h1>
           </div>
 
           <div className="ap-top-actions">
-            <label className="ap-search">
+            <form className="ap-search" onSubmit={runSearch} role="search">
               <Icon name="search" size={15} />
-              <input ref={searchRef} type="search" placeholder="Search portal" aria-label="Search portal" />
+              <input
+                ref={searchRef}
+                type="search"
+                value={search}
+                placeholder="Search students"
+                aria-label="Search students"
+                onChange={(event) => setSearch(event.target.value)}
+              />
               <kbd>⌘ K</kbd>
-            </label>
-            <button type="button" className="ap-icon-button" aria-label="Notifications">
-              <Icon name="bell" size={16} />
-              <span className="ap-bell-dot" aria-hidden="true" />
-            </button>
-            <button type="button" className="ap-icon-button ap-avatar-button" aria-label="Your account">
-              SM
-            </button>
+            </form>
+            <span className="ap-icon-button ap-avatar-button" role="img" aria-label={`Signed in as ${label}`}>
+              {initials}
+            </span>
           </div>
         </header>
 
