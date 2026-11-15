@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requireRole } from './auth.js';
 import { getPool, withTransaction } from './db.js';
-import { getCurrentTerm } from './results.js';
+import { getCurrentTerm } from './term-data.js';
 import { asyncHandler } from './session.js';
 import { audit, fail, staff, validate } from './students.js';
 
@@ -26,7 +26,15 @@ function describe(row: AuditRow): { title: string; owner: string } {
     if (field === 'uploaded') return { title: 'Results uploaded', owner };
     return { title: newValue === 'published' ? 'Results published' : 'Results unpublished', owner };
   }
-  if (type === 'class') return { title: 'Class created', owner: String(row.class_name ?? '') };
+  if (type === 'class') return { title: field === 'attendance' ? 'Attendance recorded' : 'Class created', owner: String(row.class_name ?? '') };
+  if (type === 'staff') {
+    const owner = String(row.staff_email ?? `Staff #${row.entity_id}`);
+    if (field === 'created') return { title: 'Staff account created', owner };
+    if (field === 'active') return { title: newValue === false ? 'Staff account deactivated' : 'Staff account reactivated', owner };
+    if (field === 'role') return { title: 'Staff role changed', owner };
+    if (field === 'classes') return { title: 'Teacher classes changed', owner };
+    return { title: 'Staff password reset', owner };
+  }
   if (type === 'term') return { title: field === 'current' ? 'Current term changed' : 'Term created', owner: `${row.term_name ?? ''} ${row.term_session ?? ''}`.trim() };
   if (type === 'settings') return { title: 'School details updated', owner: 'School profile' };
   return { title: `${type} ${field}`, owner: '' };
@@ -39,7 +47,8 @@ export async function listAudit(limit: number, offset: number) {
             s.first_name, s.last_name,
             c.name AS class_name,
             bc.name AS batch_class, bt.name AS batch_term,
-            t.name AS term_name, t.session AS term_session
+            t.name AS term_name, t.session AS term_session,
+            st.email AS staff_email
      FROM audit_log a
      LEFT JOIN staff_users su ON su.id = a.actor_id
      LEFT JOIN students s ON a.entity_type = 'student' AND s.id = a.entity_id
@@ -48,6 +57,7 @@ export async function listAudit(limit: number, offset: number) {
      LEFT JOIN classes bc ON bc.id = rb.class_id
      LEFT JOIN terms bt ON bt.id = rb.term_id
      LEFT JOIN terms t ON a.entity_type = 'term' AND t.id = a.entity_id
+     LEFT JOIN staff_users st ON a.entity_type = 'staff' AND st.id = a.entity_id
      ORDER BY a.id DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset],

@@ -8,21 +8,10 @@ import type { StoredResult } from './grading.js';
 import { parseResultsCsv } from './results-csv.js';
 import { asyncHandler } from './session.js';
 import { allowedClassIds, audit, fail, readCsv, staff, validate } from './students.js';
+import { attendanceTotals, getCurrentTerm } from './term-data.js';
 import { tableInputSchema } from './table-input.js';
 
-export type TermRow = { id: number; name: string; session: string; nextTermBegins: string | null };
-
-export async function getCurrentTerm(): Promise<TermRow | null> {
-  const result = await getPool().query('SELECT id, name, session, next_term_begins FROM terms WHERE is_current LIMIT 1');
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
-    id: Number(row.id),
-    name: String(row.name),
-    session: String(row.session),
-    nextTermBegins: row.next_term_begins ? new Date(row.next_term_begins).toISOString().slice(0, 10) : null,
-  };
-}
+export { getCurrentTerm };
 
 const uploadSchema = z.intersection(
   tableInputSchema,
@@ -33,7 +22,7 @@ const idParam = z.coerce.number().int().positive();
 
 async function loadBatch(id: number) {
   const result = await getPool().query(
-    `SELECT rb.id, rb.class_id, rb.status, c.name AS class_name, t.name AS term_name, t.session
+    `SELECT rb.id, rb.class_id, rb.term_id, rb.status, c.name AS class_name, t.name AS term_name, t.session
      FROM result_batches rb
      JOIN classes c ON c.id = rb.class_id
      JOIN terms t ON t.id = rb.term_id
@@ -226,12 +215,21 @@ export function createResultsRouter(): Router {
         [id],
       );
 
-      const entries = rows.rows.map((row) => ({
-        studentId: Number(row.student_id),
-        name: `${row.first_name} ${row.last_name}`,
-        admissionNumber: String(row.admission_number),
-        ...summarize(row.data),
-      }));
+      // The daily register wins over attendance columns from the upload when the register has entries.
+      const totals = await attendanceTotals(rows.rows.map((row) => Number(row.student_id)), Number(batch.term_id));
+      const entries = rows.rows.map((row) => {
+        const studentId = Number(row.student_id);
+        const base = summarize(row.data);
+        const register = totals.get(studentId);
+        return {
+          studentId,
+          name: `${row.first_name} ${row.last_name}`,
+          admissionNumber: String(row.admission_number),
+          ...base,
+          schoolDays: register?.schoolDays ?? base.schoolDays,
+          daysPresent: register?.present ?? base.daysPresent,
+        };
+      });
       const ranks = rankByAverage(entries.map((entry) => ({ id: entry.studentId, average: entry.average })));
 
       const missing = await getPool().query(

@@ -4,6 +4,15 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api } from './api';
 import './portal/portal.css';
 import {
+  AdminOverviewPage,
+  AuditLogPage,
+  PromoteStudentsPage,
+  ResultBatchPage,
+  ResultsReviewPage,
+  ResultsUploadPage,
+} from './portal/admin-results';
+import { AttendancePage, SchoolSetupPage } from './portal/admin-setup';
+import {
   AccessCodeManagementPage,
   GenerateClassCodesPage,
   GenerateIndividualCodePage,
@@ -14,8 +23,7 @@ import {
 } from './portal/admin-live';
 import { LandingPage, ParentLoginPage, StaffLoginPage } from './portal/auth';
 import { MessageModal, MessageModalContext } from './portal/message-modal';
-import { LiveOverviewPage, ResultsUploadLivePage, ResultsReviewLivePage, AuditLivePage, SchoolSetupPage } from './portal/admin-live-data';
-import { ParentReportPage } from './portal/parent-live';
+import { ParentDashboardPage, ParentResultsPage } from './portal/parent-live';
 
 /** Parent pages are only reachable with a valid parent session (checked by the server, not the URL). */
 function RequireParent({ children }: { children: ReactNode }) {
@@ -37,6 +45,7 @@ function RequireParent({ children }: { children: ReactNode }) {
 }
 
 const admin = (element: ReactNode) => <RequireStaff role="superadmin">{element}</RequireStaff>;
+const anyStaff = (element: ReactNode) => <RequireStaff>{element}</RequireStaff>;
 
 function AppRoutes() {
   return (
@@ -49,23 +58,26 @@ function AppRoutes() {
         <Route path="/parent-login" element={<ParentLoginPage />} />
 
         {/* Parent portal */}
-        <Route path="/parent-dashboard" element={<RequireParent><ParentReportPage /></RequireParent>} />
-        <Route path="/parent-results" element={<RequireParent><ParentReportPage resultsOnly /></RequireParent>} />
+        <Route path="/parent-dashboard" element={<RequireParent><ParentDashboardPage /></RequireParent>} />
+        <Route path="/parent-results" element={<RequireParent><ParentResultsPage /></RequireParent>} />
 
-        {/* Staff: teachers see their own classes (view only); superadmins manage everything */}
-        <Route path="/student-management" element={<RequireStaff><StudentManagementPage /></RequireStaff>} />
+        {/* Staff: teachers work with their own classes; superadmins manage everything */}
+        <Route path="/student-management" element={anyStaff(<StudentManagementPage />)} />
+        <Route path="/attendance" element={anyStaff(<AttendancePage />)} />
+        <Route path="/results-upload" element={anyStaff(<ResultsUploadPage />)} />
+        <Route path="/results-review/:id" element={anyStaff(<ResultBatchPage />)} />
         <Route path="/staff-dashboard" element={<Navigate to="/student-management" replace />} />
 
-        <Route path="/admin-overview" element={admin(<LiveOverviewPage />)} />
+        <Route path="/admin-overview" element={admin(<AdminOverviewPage />)} />
         <Route path="/student-import" element={admin(<StudentImportPage />)} />
         <Route path="/student-add" element={admin(<StudentFormPage mode="add" />)} />
         <Route path="/student-edit/:id" element={admin(<StudentFormPage mode="edit" />)} />
+        <Route path="/student-promote" element={admin(<PromoteStudentsPage />)} />
         <Route path="/access-codes" element={admin(<AccessCodeManagementPage />)} />
         <Route path="/access-codes-generate" element={admin(<GenerateClassCodesPage />)} />
         <Route path="/access-codes-individual" element={admin(<GenerateIndividualCodePage />)} />
-        <Route path="/results-upload" element={<RequireStaff><ResultsUploadLivePage /></RequireStaff>} />
-        <Route path="/results-review" element={admin(<ResultsReviewLivePage />)} />
-        <Route path="/audit-log" element={admin(<AuditLivePage />)} />
+        <Route path="/results-review" element={admin(<ResultsReviewPage />)} />
+        <Route path="/audit-log" element={admin(<AuditLogPage />)} />
         <Route path="/school-setup" element={admin(<SchoolSetupPage />)} />
 
         <Route path="*" element={<LandingPage />} />

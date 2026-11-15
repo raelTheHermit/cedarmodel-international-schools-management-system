@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireParent } from './auth.js';
 import { getPool } from './db.js';
 import { GRADE_SCALE, rankByAverage, summarize } from './grading.js';
-import { getCurrentTerm } from './results.js';
+import { attendanceTotals, getCurrentTerm } from './term-data.js';
 import { asyncHandler } from './session.js';
 
 /**
@@ -61,6 +61,9 @@ export function createParentRouter(): Router {
       const ranks = rankByAverage(averages);
 
       const report = summarize(row.data);
+      const register = (await attendanceTotals([studentId], term.id)).get(studentId);
+      const schoolDays = register?.schoolDays ?? report.schoolDays;
+      const daysPresent = register?.present ?? report.daysPresent;
       res.json({
         ...base,
         status: 'published',
@@ -74,7 +77,7 @@ export function createParentRouter(): Router {
           subjectCount: report.subjects.length,
           position: { rank: ranks.get(studentId) ?? 0, of: averages.length },
         },
-        attendance: report.schoolDays !== null && report.daysPresent !== null ? { schoolDays: report.schoolDays, present: report.daysPresent } : null,
+        attendance: schoolDays !== null && daysPresent !== null ? { schoolDays, present: daysPresent } : null,
         comment: report.comment,
       });
     }),

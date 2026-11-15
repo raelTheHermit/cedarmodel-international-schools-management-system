@@ -37,9 +37,6 @@ export async function tableInputToCsv(input: TableInput): Promise<string> {
 
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new TableInputError('The workbook has no sheets.');
-  if (sheet.rowCount > MAX_SHEET_ROWS) {
-    throw new TableInputError(`Workbooks may contain at most ${MAX_SHEET_ROWS} rows per sheet.`);
-  }
 
   const columns = Math.min(sheet.columnCount, 50);
   const lines: string[] = [];
