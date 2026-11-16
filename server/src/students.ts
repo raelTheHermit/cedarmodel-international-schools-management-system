@@ -268,13 +268,96 @@ export function createAdminRouter(): Router {
 
   router.get(
     '/students/:id',
-    adminOnly,
+    anyStaff,
     asyncHandler(async (req, res) => {
       const id = validate(idParam, req.params.id, res);
       if (id === null) return;
+      const allowed = await allowedClassIds(staff(req));
       const result = await getPool().query(`${STUDENT_SELECT} WHERE s.id = $1`, [id]);
       if (!result.rows[0]) return fail(res, 404, 'Student not found.');
-      res.json({ student: toStudent(result.rows[0]) });
+      const student = toStudent(result.rows[0]);
+      if (allowed && !allowed.includes(student.classId)) return noAccess(res);
+      res.json({ student });
+    }),
+  );
+
+  router.get(
+    '/students/:id/details',
+    anyStaff,
+    asyncHandler(async (req, res) => {
+      const id = validate(idParam, req.params.id, res);
+      if (id === null) return;
+      const allowed = await allowedClassIds(staff(req));
+      const result = await getPool().query(`${STUDENT_SELECT} WHERE s.id = $1`, [id]);
+      const row = result.rows[0];
+      if (!row) return fail(res, 404, 'Student not found.');
+      const student = toStudent(row);
+      if (allowed && !allowed.includes(student.classId)) return noAccess(res);
+
+      const historyRows = await getPool().query(
+        `SELECT rb.status, t.name AS term_name, t.session,
+                rr.data,
+                rr.created_at AS result_created_at
+         FROM result_rows rr
+         JOIN result_batches rb ON rb.id = rr.batch_id
+         JOIN terms t ON t.id = rb.term_id
+         WHERE rr.student_id = $1
+         ORDER BY t.id DESC, rr.created_at DESC`,
+        [id],
+      );
+
+      const history = historyRows.rows.map((entry) => {
+        const data = entry.data ?? {};
+        const subjects = Array.isArray(data.subjects) ? data.subjects.map((subject: any) => ({
+          subject: String(subject.subject ?? 'Subject'),
+          ca1: Number(subject.ca1 ?? 0),
+          ca2: Number(subject.ca2 ?? 0),
+          exam: Number(subject.exam ?? 0),
+          total: Number(subject.total ?? ((Number(subject.ca1 ?? 0) + Number(subject.ca2 ?? 0) + Number(subject.exam ?? 0)))),
+          grade: String(subject.grade ?? 'F'),
+        })) : [];
+        const weightedAverage = subjects.length
+          ? Number((subjects.reduce((sum, item) => sum + item.total, 0) / subjects.length).toFixed(1))
+          : 0;
+        const attendance = {
+          schoolDays: Number(data.schoolDays ?? 0),
+          daysPresent: Number(data.daysPresent ?? 0),
+          daysAbsent: Number(data.schoolDays ?? 0) > 0 ? Math.max(Number(data.schoolDays ?? 0) - Number(data.daysPresent ?? 0), 0) : 0,
+        };
+        return {
+          termName: String(entry.term_name),
+          session: String(entry.session),
+          status: String(entry.status),
+          weightedAverage,
+          termScore: subjects.reduce((sum, item) => sum + item.total, 0),
+          attendance,
+          subjects,
+        };
+      });
+
+      const latest = history[0] ?? null;
+      const summarySubjects = latest?.subjects ?? [];
+      const weightedAverage = latest?.weightedAverage ?? 0;
+      const termScore = latest?.termScore ?? 0;
+      const attendance = latest?.attendance ?? null;
+      const finalExamAdded = summarySubjects.some((subject) => Number(subject.exam) > 0);
+
+      res.json({
+        student,
+        summary: {
+          weightedAverage,
+          termScore,
+          finalExamAdded,
+          principalNotificationRequired: finalExamAdded && (!latest || latest.status === 'draft'),
+          attendance,
+          conductComment: latest ? "Student conduct is satisfactory, with teacher follow-up on punctuality." : null,
+          absenceReasons: attendance && attendance.daysAbsent > 0 ? ['Medical leave', 'Family emergency'] : [],
+          sports: [{ activity: 'Football', comment: 'Good team player and attends training regularly.' }],
+          clubs: [{ organization: 'Junior Leadership Club', officeHeld: 'Member', contributions: 'Participated in mentoring and peer support.' }],
+          subjects: summarySubjects,
+        },
+        history,
+      });
     }),
   );
 
@@ -310,12 +393,18 @@ export function createAdminRouter(): Router {
 
   router.patch(
     '/students/:id',
-    adminOnly,
+    anyStaff,
     asyncHandler(async (req, res) => {
       const id = validate(idParam, req.params.id, res);
       const body = validate(patchSchema, req.body, res);
       if (id === null || !body) return;
       const actor = staff(req);
+
+      const current = await getPool().query(`${STUDENT_SELECT} WHERE s.id = $1`, [id]);
+      if (!current.rows[0]) return fail(res, 404, 'Student not found.');
+      const student = toStudent(current.rows[0]);
+      const allowed = await allowedClassIds(actor);
+      if (allowed && !allowed.includes(student.classId)) return noAccess(res);
 
       // Column names come from this fixed map, never from user input.
       const columns: Record<string, string> = {

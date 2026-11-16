@@ -412,6 +412,7 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
 
   const classes = useLoad(() => api.listClasses(), []);
   const existing = useLoad(() => (studentId ? api.getStudent(studentId) : Promise.resolve(null)), [studentId]);
+  const details = useLoad(() => (studentId ? api.getStudentDetails(studentId) : Promise.resolve(null)), [studentId]);
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -430,6 +431,11 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
       });
     }
   }, [existing.data]);
+
+  const profile = details.data?.student ?? existing.data?.student ?? null;
+  const summary = details.data?.summary ?? null;
+  const history = details.data?.history ?? [];
+  const allStudents = useLoad(() => (profile ? api.listStudents({ classId: profile.classId }) : Promise.resolve({ students: [], total: 0 })), [profile?.classId]);
 
   const update = <K extends keyof FormState>(field: K, value: FormState[K]) => setForm((current) => ({ ...current, [field]: value }));
 
@@ -483,62 +489,267 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
     </div>
   );
 
-  if (existing.error) return <AdminShell section="students" title="Student Management"><div className="ap-page narrow"><LoadError message={existing.error} onRetry={existing.reload} /></div></AdminShell>;
+  if (mode === 'edit' && existing.error) return <AdminShell section="students" title="Student Management"><div className="ap-page wide"><LoadError message={existing.error} onRetry={existing.reload} /></div></AdminShell>;
+  if (mode === 'add' && classes.error) return <AdminShell section="students" title="Student Management"><div className="ap-page narrow"><LoadError message={classes.error} onRetry={classes.reload} /></div></AdminShell>;
+
+  if (mode === 'add') {
+    return (
+      <AdminShell section="students" title="Student Management">
+        <div className="ap-page narrow">
+          <AdminPageHeader
+            title="Add a student"
+            subtitle="Create a student profile and assign them to a class."
+            backLabel="Back to student management"
+            onBack={() => navigate('/student-management')}
+          />
+
+          <form className="ap-card" onSubmit={handleSubmit} noValidate>
+            <p className="ap-kicker">Student information</p>
+            <h3 className="ap-card-title">New student details</h3>
+            <p className="ap-card-note">All fields are required to create a complete school record.</p>
+
+            <div className="ap-form-grid">
+              {field('firstName', 'First name', { placeholder: 'e.g. Adaeze' })}
+              {field('lastName', 'Last name', { placeholder: 'e.g. Obi' })}
+              {field('admissionNumber', 'Admission number', { placeholder: 'e.g. SCH/2026/0001' })}
+
+              <div className="ap-field">
+                <label htmlFor="student-classId">Class assignment <b aria-hidden="true">*</b></label>
+                <span className="ap-select">
+                  <select id="student-classId" value={form.classId} aria-invalid={Boolean(errors.classId) || undefined} onChange={(event) => update('classId', event.target.value)}>
+                    <option value="" disabled>Select class</option>
+                    {(classes.data?.classes ?? []).map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                </span>
+                {errors.classId && <span className="ap-field-error">{errors.classId}</span>}
+              </div>
+
+              {field('parentPhone', 'Parent phone number', { placeholder: '08031234567' })}
+
+              <div className="ap-field">
+                <label htmlFor="student-active">Account status</label>
+                <span className="ap-select">
+                  <select id="student-active" value={form.active ? 'Active' : 'Inactive'} onChange={(event) => update('active', event.target.value === 'Active')}>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                  </select>
+                </span>
+              </div>
+            </div>
+
+            <FormFooter>
+              <button type="button" className="ap-button light" onClick={() => navigate('/student-management')}>Cancel</button>
+              <button type="submit" className="ap-button dark" disabled={busy}>
+                {busy ? 'Saving…' : 'Add student'}
+                <Icon name="arrowRight" size={16} />
+              </button>
+            </FormFooter>
+          </form>
+        </div>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell section="students" title="Student Management">
-      <div className="ap-page narrow">
+      <div className="ap-page wide">
         <AdminPageHeader
-          title={mode === 'edit' ? 'Edit student' : 'Add a student'}
-          subtitle={mode === 'edit' ? 'Update this student’s record.' : 'Create a student profile and assign them to a class.'}
+          title={profile ? `${profile.firstName} ${profile.lastName}` : 'Student details'}
+          subtitle={profile ? `Admission number: ${profile.admissionNumber} · ${profile.className}` : 'Student details'}
           backLabel="Back to student management"
           onBack={() => navigate('/student-management')}
         />
 
-        <form className="ap-card" onSubmit={handleSubmit} noValidate>
-          <p className="ap-kicker">Student information</p>
-          <h3 className="ap-card-title">{mode === 'edit' ? 'Student details' : 'New student details'}</h3>
-          <p className="ap-card-note">All fields are required to create a complete school record.</p>
+        {details.error ? (
+          <LoadError message={details.error} onRetry={details.reload} />
+        ) : profile && (
+          <>
+            {summary?.principalNotificationRequired && (
+              <section className="ap-note-box" role="status">
+                <strong>Principal review required:</strong>
+                <span>Final examination data has been added for this student. Please notify the principal or headmaster to add the final teacher/principal comments.</span>
+              </section>
+            )}
 
-          <div className="ap-form-grid">
-            {field('firstName', 'First name', { placeholder: 'e.g. Adaeze' })}
-            {field('lastName', 'Last name', { placeholder: 'e.g. Obi' })}
-            {field('admissionNumber', 'Admission number', { placeholder: 'e.g. SCH/2026/0001' })}
+            <section className="ap-card">
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">Student record</p>
+                  <h3 className="ap-panel-title">Edit profile</h3>
+                </div>
+              </div>
 
-            <div className="ap-field">
-              <label htmlFor="student-classId">Class assignment <b aria-hidden="true">*</b></label>
-              <span className="ap-select">
-                <select id="student-classId" value={form.classId} aria-invalid={Boolean(errors.classId) || undefined} onChange={(event) => update('classId', event.target.value)}>
-                  <option value="" disabled>Select class</option>
-                  {(classes.data?.classes ?? []).map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-              </span>
-              {errors.classId && <span className="ap-field-error">{errors.classId}</span>}
+              <form className="ap-form-grid" onSubmit={handleSubmit} noValidate>
+                {field('firstName', 'First name', { placeholder: 'e.g. Adaeze' })}
+                {field('lastName', 'Last name', { placeholder: 'e.g. Obi' })}
+                {field('admissionNumber', 'Admission number', { placeholder: 'e.g. SCH/2026/0001' })}
+
+                <div className="ap-field">
+                  <label htmlFor="student-classId">Class assignment <b aria-hidden="true">*</b></label>
+                  <span className="ap-select">
+                    <select id="student-classId" value={form.classId} aria-invalid={Boolean(errors.classId) || undefined} onChange={(event) => update('classId', event.target.value)}>
+                      <option value="" disabled>Select class</option>
+                      {(classes.data?.classes ?? []).map((item) => (
+                        <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                    </select>
+                  </span>
+                  {errors.classId && <span className="ap-field-error">{errors.classId}</span>}
+                </div>
+
+                {field('parentPhone', 'Parent phone number', { placeholder: '08031234567' })}
+
+                <div className="ap-field">
+                  <label htmlFor="student-active">Account status</label>
+                  <span className="ap-select">
+                    <select id="student-active" value={form.active ? 'Active' : 'Inactive'} onChange={(event) => update('active', event.target.value === 'Active')}>
+                      <option>Active</option>
+                      <option>Inactive</option>
+                    </select>
+                  </span>
+                </div>
+
+                <div className="ap-form-footer" style={{ gridColumn: '1 / -1' }}>
+                  <button type="button" className="ap-button light" onClick={() => navigate('/student-management')}>Cancel</button>
+                  <button type="submit" className="ap-button dark" disabled={busy || details.loading}>
+                    {busy ? 'Saving…' : 'Save changes'}
+                    <Icon name="arrowRight" size={16} />
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <div className="ap-stat-grid four">
+              <div className="ap-stat plain"><span className="ap-stat-label">Weighted average</span><strong className="serif">{summary?.weightedAverage ?? 0}</strong><small>Current term</small></div>
+              <div className="ap-stat plain"><span className="ap-stat-label">Term score</span><strong className="serif">{summary?.termScore ?? 0}</strong><small>Across all subjects</small></div>
+              <div className="ap-stat plain"><span className="ap-stat-label">Attendance</span><strong className="serif">{summary?.attendance ? `${summary.attendance.daysPresent}/${summary.attendance.schoolDays}` : '0/0'}</strong><small>Present / school days</small></div>
+              <div className="ap-stat plain"><span className="ap-stat-label">Absence</span><strong className="serif">{summary?.attendance?.daysAbsent ?? 0}</strong><small>Days absent</small></div>
             </div>
 
-            {field('parentPhone', 'Parent phone number', { placeholder: '08031234567' })}
+            <section className="ap-panel">
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">Academic summary</p>
+                  <h3 className="ap-panel-title">Current subject performance</h3>
+                </div>
+              </div>
 
-            <div className="ap-field">
-              <label htmlFor="student-active">Account status</label>
-              <span className="ap-select">
-                <select id="student-active" value={form.active ? 'Active' : 'Inactive'} onChange={(event) => update('active', event.target.value === 'Active')}>
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-              </span>
-            </div>
-          </div>
+              <div className="ap-table students" role="table" aria-label="Subject summary">
+                <div className="ap-table-head" role="row">
+                  <span role="columnheader">Subject</span>
+                  <span role="columnheader">CA1</span>
+                  <span role="columnheader">CA2</span>
+                  <span role="columnheader">Exam</span>
+                  <span role="columnheader">Total</span>
+                  <span role="columnheader">Grade</span>
+                </div>
+                {(summary?.subjects?.length ?? 0) === 0 ? (
+                  <p className="ap-table-empty">No result data has been uploaded yet for this student.</p>
+                ) : (
+                  summary?.subjects.map((item) => (
+                    <div key={item.subject} className="ap-table-row" role="row">
+                      <span role="cell">{item.subject}</span>
+                      <span role="cell">{item.ca1}</span>
+                      <span role="cell">{item.ca2}</span>
+                      <span role="cell">{item.exam}</span>
+                      <span role="cell">{item.total}</span>
+                      <span role="cell">{item.grade}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
 
-          <FormFooter>
-            <button type="button" className="ap-button light" onClick={() => navigate('/student-management')}>Cancel</button>
-            <button type="submit" className="ap-button dark" disabled={busy || (mode === 'edit' && existing.loading)}>
-              {busy ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Add student'}
-              <Icon name="arrowRight" size={16} />
-            </button>
-          </FormFooter>
-        </form>
+            <section className="ap-panel">
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">Student conduct</p>
+                  <h3 className="ap-panel-title">Attendance, behaviour and co-curricular</h3>
+                </div>
+              </div>
+              <div className="ap-form-grid">
+                <div className="ap-field">
+                  <label>Teacher’s conduct comment</label>
+                  <textarea value={summary?.conductComment ?? 'No teacher comment recorded yet.'} readOnly rows={3} />
+                </div>
+                <div className="ap-field">
+                  <label>Absence reasons</label>
+                  <textarea value={(summary?.absenceReasons.length ?? 0) ? summary!.absenceReasons.join('; ') : 'No recorded reasons for absence.'} readOnly rows={3} />
+                </div>
+                <div className="ap-field">
+                  <label>Sport participation</label>
+                  <textarea value={(summary?.sports?.length ?? 0) ? summary!.sports.map((sport) => `${sport.activity}: ${sport.comment ?? 'No comment yet'}`).join('\n') : 'No sports activity recorded.'} readOnly rows={4} />
+                </div>
+                <div className="ap-field">
+                  <label>Club / youth organization participation</label>
+                  <textarea value={(summary?.clubs?.length ?? 0) ? summary!.clubs.map((club) => `${club.organization} · ${club.officeHeld ?? 'Member'} · ${club.contributions ?? 'No contribution noted'}`).join('\n') : 'No club or youth organization data recorded.'} readOnly rows={4} />
+                </div>
+              </div>
+            </section>
+
+            <section className="ap-panel">
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">Academic history</p>
+                  <h3 className="ap-panel-title">Old term / year results</h3>
+                </div>
+              </div>
+
+              <div className="ap-table students" role="table" aria-label="Old term results history">
+                <div className="ap-table-head" role="row">
+                  <span role="columnheader">Term</span>
+                  <span role="columnheader">Session</span>
+                  <span role="columnheader">Status</span>
+                  <span role="columnheader">Weighted average</span>
+                  <span role="columnheader">Term score</span>
+                </div>
+                {history.length === 0 ? (
+                  <p className="ap-table-empty">No prior term data is available for this student.</p>
+                ) : (
+                  history.map((term) => (
+                    <div key={`${term.termName}-${term.session}`} className="ap-table-row" role="row">
+                      <span role="cell">{term.termName}</span>
+                      <span role="cell">{term.session}</span>
+                      <span role="cell"><Pill tone={term.status === 'published' ? 'success' : 'muted'}>{term.status}</Pill></span>
+                      <span role="cell">{term.weightedAverage}</span>
+                      <span role="cell">{term.termScore}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="ap-panel">
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">Class roster</p>
+                  <h3 className="ap-panel-title">All students in this class</h3>
+                </div>
+              </div>
+
+              <div className="ap-table students" role="table" aria-label="Class roster">
+                <div className="ap-table-head" role="row">
+                  <span role="columnheader">Student</span>
+                  <span role="columnheader">Admission number</span>
+                  <span role="columnheader">Status</span>
+                </div>
+                {(allStudents.data?.students ?? []).length === 0 ? (
+                  <p className="ap-table-empty">No classmates are registered in this class yet.</p>
+                ) : (
+                  (allStudents.data?.students ?? []).map((studentRow) => (
+                    <div key={studentRow.id} className="ap-table-row" role="row">
+                      <span role="cell" className="ap-person"><Initials name={`${studentRow.firstName} ${studentRow.lastName}`} /><strong>{studentRow.firstName} {studentRow.lastName}</strong></span>
+                      <span role="cell">{studentRow.admissionNumber}</span>
+                      <span role="cell"><Pill tone={studentRow.active ? 'success' : 'muted'}>{studentRow.active ? 'Active' : 'Inactive'}</Pill></span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </AdminShell>
   );

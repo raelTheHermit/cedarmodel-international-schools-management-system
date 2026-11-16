@@ -71,7 +71,8 @@ function AppRoutes() {
         <Route path="/admin-overview" element={admin(<AdminOverviewPage />)} />
         <Route path="/student-import" element={admin(<StudentImportPage />)} />
         <Route path="/student-add" element={admin(<StudentFormPage mode="add" />)} />
-        <Route path="/student-edit/:id" element={admin(<StudentFormPage mode="edit" />)} />
+        <Route path="/student-details/:id" element={anyStaff(<StudentFormPage mode="edit" />)} />
+        <Route path="/student-edit/:id" element={anyStaff(<StudentFormPage mode="edit" />)} />
         <Route path="/student-promote" element={admin(<PromoteStudentsPage />)} />
         <Route path="/access-codes" element={admin(<AccessCodeManagementPage />)} />
         <Route path="/access-codes-generate" element={admin(<GenerateClassCodesPage />)} />

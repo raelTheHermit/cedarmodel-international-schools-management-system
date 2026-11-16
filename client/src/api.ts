@@ -51,6 +51,31 @@ export type AdminStudent = {
   className: string;
 };
 
+export type StudentDetail = {
+  student: AdminStudent;
+  summary: {
+    weightedAverage: number;
+    termScore: number;
+    finalExamAdded: boolean;
+    principalNotificationRequired: boolean;
+    attendance: { schoolDays: number; daysPresent: number; daysAbsent: number } | null;
+    conductComment: string | null;
+    absenceReasons: string[];
+    sports: Array<{ activity: string; comment: string | null }>;
+    clubs: Array<{ organization: string; officeHeld: string | null; contributions: string | null }>;
+    subjects: Array<{ subject: string; ca1: number; ca2: number; exam: number; total: number; grade: string }>;
+  };
+  history: Array<{
+    termName: string;
+    session: string;
+    status: string;
+    weightedAverage: number;
+    termScore: number;
+    attendance: { schoolDays: number; daysPresent: number; daysAbsent: number } | null;
+    subjects: Array<{ subject: string; ca1: number; ca2: number; exam: number; total: number; grade: string }>;
+  }>;
+};
+
 export type StudentInput = {
   firstName: string;
   lastName: string;
@@ -195,6 +220,8 @@ export const api = {
     apiRequest<{ students: AdminStudent[]; total: number }>(`/admin/students${qs(params)}`),
 
   getStudent: (id: number) => apiRequest<{ student: AdminStudent }>(`/admin/students/${id}`),
+
+  getStudentDetails: (id: number) => apiRequest<StudentDetail>(`/admin/students/${id}/details`),
 
   createStudent: (input: StudentInput) =>
     apiRequest<{ student: AdminStudent }>('/admin/students', { method: 'POST', body: JSON.stringify(input) }),
