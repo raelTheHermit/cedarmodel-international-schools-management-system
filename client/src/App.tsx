@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { api } from './api';
 import './portal/portal.css';
 import {
@@ -92,7 +92,7 @@ function App() {
   const [message, setMessage] = useState('');
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <MessageModalContext.Provider value={setMessage}>
         <div className="app-shell">
           <header className="topbar">
@@ -103,7 +103,7 @@ function App() {
         </div>
         <MessageModal message={message} onClose={() => setMessage('')} />
       </MessageModalContext.Provider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
