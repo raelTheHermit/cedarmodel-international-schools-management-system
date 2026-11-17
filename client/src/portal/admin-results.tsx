@@ -299,70 +299,14 @@ export function AdminOverviewPage() {
 /* ------------------------------------------------------------------ */
 
 const TEMPLATE = [
-  'Admission number,Subject,CA1,CA2,Exam,School days,Days present,Teacher comment',
-  'SS3/001,Mathematics,18,17,53,62,59,"Strong, steady work"',
-  'SS3/001,English Language,16,15,50,62,59,"Consistent in class work"',
-  'SS3/001,Physics,17,16,49,62,58,"Good problem-solving skills"',
-  'SS3/001,Chemistry,15,14,46,62,57,"Needs more revision in balancing equations"',
-  'SS3/001,Biology,18,17,52,62,60,"Very good practical understanding"',
-  'SS3/001,Economics,13,14,41,62,54,"Improving steadily"',
-  'SS3/001,Government,16,15,48,62,58,"Participates well in discussion"',
-  'SS3/001,Civic Education,17,16,50,62,59,"Well behaved and reliable"',
-  'SS3/001,Computer Studies,19,18,55,62,61,"Excellent digital skills"',
-  'SS3/002,Mathematics,15,14,42,62,53,"Works harder with targeted practice"',
-  'SS3/002,English Language,14,13,44,62,54,"Clear expression and fair comprehension"',
-  'SS3/002,Physics,12,13,40,62,50,"Needs more attention to formulas"',
-  'SS3/002,Chemistry,14,15,43,62,52,"Shows good effort in class"',
-  'SS3/002,Biology,15,16,47,62,55,"Good scientific explanation"',
-  'SS3/002,Economics,11,12,38,62,49,"Improvement needed in application"',
-  'SS3/002,Government,13,14,42,62,50,"Good understanding of current events"',
-  'SS3/002,Civic Education,15,14,45,62,52,"Shows responsibility and maturity"',
-  'SS3/002,Computer Studies,16,15,49,62,57,"Strong practical performance"',
-  'SS3/003,Mathematics,17,16,48,62,58,"Good analytical thinking"',
-  'SS3/003,English Language,18,17,53,62,59,"Very good writing and comprehension"',
-  'SS3/003,Physics,16,15,47,62,56,"Good understanding of concepts"',
-  'SS3/003,Chemistry,15,14,45,62,55,"Can improve on written explanations"',
-  'SS3/003,Biology,17,17,51,62,60,"Excellent in practical work"',
-  'SS3/003,Economics,14,13,39,62,50,"Good effort in class"',
-  'SS3/003,Government,16,15,46,62,56,"Steady performance"',
-  'SS3/003,Civic Education,17,16,49,62,58,"Reliable and respectful"',
-  'SS3/003,Computer Studies,18,17,54,62,60,"Very confident in ICT tasks"',
-  'SS3/004,Mathematics,14,13,39,62,49,"Needs more practice in word problems"',
-  'SS3/004,English Language,15,14,45,62,52,"Clear and expressive"',
-  'SS3/004,Physics,13,12,38,62,48,"Concentrate on solving steps"',
-  'SS3/004,Chemistry,12,13,37,62,46,"Can improve with revision"',
-  'SS3/004,Biology,14,15,42,62,50,"Good effort and consistency"',
-  'SS3/004,Economics,10,11,35,62,44,"Needs more application practice"',
-  'SS3/004,Government,12,13,40,62,48,"Steady progress"',
-  'SS3/004,Civic Education,14,13,43,62,50,"Shows good conduct"',
-  'SS3/004,Computer Studies,15,14,46,62,54,"Works well with classroom tasks"',
-  'SS3/005,Mathematics,19,18,57,62,61,"Excellent performance"',
-  'SS3/005,English Language,17,16,49,62,59,"Strong reading and writing"',
-  'SS3/005,Physics,18,17,53,62,60,"Very good reasoning"',
-  'SS3/005,Chemistry,16,15,48,62,58,"Good scientific explanations"',
-  'SS3/005,Biology,18,17,54,62,61,"Outstanding practical understanding"',
-  'SS3/005,Economics,15,14,45,62,54,"Strong participation"',
-  'SS3/005,Government,17,16,50,62,58,"Excellent civic reasoning"',
-  'SS3/005,Civic Education,18,17,52,62,60,"Very disciplined"',
-  'SS3/005,Computer Studies,19,18,56,62,61,"Excellent ICT skills"',
-  'SS3/006,Mathematics,13,12,37,62,48,"Needs more confidence"',
-  'SS3/006,English Language,14,13,43,62,52,"Good spoken and written work"',
-  'SS3/006,Physics,11,12,36,62,45,"More practice on calculations"',
-  'SS3/006,Chemistry,13,14,40,62,49,"Reasonable progress"',
-  'SS3/006,Biology,15,14,44,62,52,"Good observation skills"',
-  'SS3/006,Economics,12,13,40,62,48,"Needs more conceptual clarity"',
-  'SS3/006,Government,14,13,42,62,50,"Approaching expectations"',
-  'SS3/006,Civic Education,15,14,46,62,53,"Steady and responsible"',
-  'SS3/006,Computer Studies,14,13,43,62,51,"Good effort in practical tasks"',
-  'SS3/007,Mathematics,16,15,46,62,56,"Good understanding with room to improve"',
-  'SS3/007,English Language,15,14,45,62,53,"Clear and fluent"',
-  'SS3/007,Physics,14,13,41,62,50,"Needs focused revision"',
-  'SS3/007,Chemistry,15,14,44,62,52,"Improving steadily"',
-  'SS3/007,Biology,16,15,47,62,57,"Solid practical participation"',
-  'SS3/007,Economics,13,12,39,62,48,"Can improve with more reading"',
-  'SS3/007,Government,15,14,45,62,53,"Good political awareness"',
-  'SS3/007,Civic Education,16,15,48,62,56,"Very cooperative in class"',
-  'SS3/007,Computer Studies,17,16,50,62,58,"Good and consistent use of ICT tools"',
+  'Admission number,Mathematics CA1,Mathematics CA2,Mathematics Exam,English Language CA1,English Language CA2,English Language Exam,Physics CA1,Physics CA2,Physics Exam,Chemistry CA1,Chemistry CA2,Chemistry Exam,Biology CA1,Biology CA2,Biology Exam,Economics CA1,Economics CA2,Economics Exam,Government CA1,Government CA2,Government Exam,Civic Education CA1,Civic Education CA2,Civic Education Exam,Computer Studies CA1,Computer Studies CA2,Computer Studies Exam,School days,Days present,Teacher comment',
+  'SS3/001,18,17,53,16,15,50,17,16,49,15,14,46,18,17,52,13,14,41,16,15,48,17,16,50,19,18,55,62,59,"Strong, steady work"',
+  'SS3/002,15,14,42,14,13,44,12,13,40,14,15,43,15,16,47,11,12,38,13,14,42,15,14,45,16,15,49,62,53,"Works harder with targeted practice"',
+  'SS3/003,17,16,48,18,17,53,16,15,47,15,14,45,17,17,51,14,13,39,16,15,46,17,16,49,18,17,54,62,58,"Good analytical thinking"',
+  'SS3/004,14,13,39,15,14,45,13,12,38,12,13,37,14,15,42,10,11,35,12,13,40,14,13,43,15,14,46,62,49,"Needs more practice in word problems"',
+  'SS3/005,19,18,57,17,16,49,18,17,53,16,15,48,18,17,54,15,14,45,17,16,50,18,17,52,19,18,56,62,61,"Excellent performance"',
+  'SS3/006,13,12,37,14,13,43,11,12,36,13,14,40,15,14,44,12,13,40,14,13,42,15,14,46,14,13,43,62,48,"Needs more confidence"',
+  'SS3/007,16,15,46,15,14,45,14,13,41,15,14,44,16,15,47,13,12,39,15,14,45,16,15,48,17,16,50,62,56,"Good understanding with room to improve"',
 ];
 
 export function ResultsUploadPage() {
@@ -450,8 +394,8 @@ export function ResultsUploadPage() {
               <p className="ap-kicker">Upload</p>
               <h3 className="ap-card-title">Upload a class result sheet</h3>
               <p className="ap-card-note">
-                One row per student per subject. Use this long-format layout: Admission number, Subject, CA1 (0–20), CA2 (0–20), Exam (0–60). Optional: School days, Days present, Teacher comment.
-                The example below is a full template for seven SS3 students across the major subjects. Uploading again replaces the earlier draft for that class.{' '}
+                Use the school report-sheet format: one row per student, with each subject split into CA1, CA2 and Exam columns. Optional: School days, Days present, Teacher comment.
+                The template below includes seven SS3 students and all the major subjects in report-sheet order. Uploading again replaces the earlier draft for that class.{' '}
                 <button type="button" className="ap-text-link" onClick={() => downloadCsv('ss3-results-template.csv', TEMPLATE)}>Download a template</button>
               </p>
 

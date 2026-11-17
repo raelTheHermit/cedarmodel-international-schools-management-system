@@ -25,6 +25,17 @@ describe('parseResultsCsv', () => {
     expect(errors[2]).toContain('listed twice');
   });
 
+  it('parses a report-sheet style CSV with subject columns', () => {
+    const { rows, errors } = parseResultsCsv([
+      'Admission number,Mathematics CA1,Mathematics CA2,Mathematics Exam,English Language CA1,English Language CA2,English Language Exam,School days,Days present,Teacher comment',
+      'ADM-1,18,17,53,16,15,50,62,59,"Strong, steady work"',
+    ].join('\n'));
+    expect(errors).toEqual([]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ admissionNumber: 'ADM-1', subject: 'Mathematics', ca1: 18, ca2: 17, exam: 53, schoolDays: 62, daysPresent: 59, comment: 'Strong, steady work' });
+    expect(rows[1]).toMatchObject({ admissionNumber: 'ADM-1', subject: 'English Language', ca1: 16, ca2: 15, exam: 50 });
+  });
+
   it('reports missing required columns', () => {
     expect(parseResultsCsv('Admission number,Subject\nADM-1,Maths').errors[0]).toContain('Missing required columns');
   });

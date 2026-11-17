@@ -9,10 +9,70 @@ import { useMessageModal } from './message-modal';
 import { StaffContext } from './staff-context';
 import { AdminPageHeader, AdminShell } from './shells';
 
+const KINDERGARTEN_SUBJECTS = [
+  'Math',
+  'Quantitative Reasoning',
+  'English Language',
+  'Verbal Reasoning',
+  'Elementary Science',
+  'Civic and Moral Instructions',
+  'Social Studies',
+  'Health Education',
+  'Religious Knowledge',
+  'Pronunciation',
+  'Courtesy',
+  'English in Practice',
+  'Creative / Fine Art',
+  'Hand Writing',
+  'French or Music',
+  'Dictation',
+  'Nursery Rhymes',
+] as const;
+
+const BEGINNERS_SUBJECTS = [
+  'Counting',
+  'Recognition',
+  'Writing',
+  'Picture Reading',
+  'Word Building',
+  'Writing',
+] as const;
+
+const PRIMARY_SUBJECTS = [
+  'Math',
+  'English',
+  'Basic Science and Technology',
+  'Basic Digital Literacy',
+  'History',
+  'Social and Citizenship Studies',
+  'Vocational Studies',
+  'Religious Knowledge',
+  'Physical and Health Education',
+  'Yoruba',
+  'Cultural and Creative Art',
+  'French or Music',
+  'Dictation',
+] as const;
+
+const JUNIOR_SECONDARY_SUBJECTS = [
+  'English Language',
+  'Mathematics',
+  'Basic Science',
+  'Basic Technology',
+  'Digital Literacy & Coding',
+  'Social Studies',
+  'French',
+  'Creative Arts',
+  'Physical & Health Education',
+  'Home Economics / Catering Craft Practices',
+  'Business Studies',
+  'Religious Studies',
+] as const;
+
 const SUBJECT_PRESETS = {
   science: [
     'English Language',
-    'General Mathematics',
+    'Mathematics',
     'Civic Education',
     'Data Processing',
     'Physics',
@@ -28,7 +88,7 @@ const SUBJECT_PRESETS = {
   ],
   arts: [
     'English Language',
-    'General Mathematics',
+    'Mathematics',
     'Civic Education',
     'Data Processing',
     'Literature-in-English',
@@ -43,7 +103,7 @@ const SUBJECT_PRESETS = {
   ],
   commercial: [
     'English Language',
-    'General Mathematics',
+    'Mathematics',
     'Civic Education',
     'Data Processing',
     'Economics',
@@ -55,6 +115,13 @@ const SUBJECT_PRESETS = {
     'Book-Keeping',
     'Computer Studies / ICT',
   ],
+} as const;
+
+const CLASS_SUBJECT_PRESETS = {
+  kindergarten: KINDERGARTEN_SUBJECTS,
+  beginners: BEGINNERS_SUBJECTS,
+  primary: PRIMARY_SUBJECTS,
+  juniorSecondary: JUNIOR_SECONDARY_SUBJECTS,
 } as const;
 
 type SubjectStream = keyof typeof SUBJECT_PRESETS | 'custom';
@@ -100,6 +167,27 @@ function normalizeSubjectRows(
 function getPresetSubjects(stream: SubjectStream): readonly string[] {
   if (stream === 'custom') return [];
   return SUBJECT_PRESETS[stream];
+}
+
+function isSeniorSecondaryClass(className: string): boolean {
+  return /(ss|senior\s*secondary)/i.test(className);
+}
+
+function getClassSubjectPreset(className: string): readonly string[] {
+  const text = className.toLowerCase();
+  if (isSeniorSecondaryClass(className)) return [];
+  if (/(kg|kindergarten|nursery)/.test(text)) return [...CLASS_SUBJECT_PRESETS.kindergarten];
+  if (/(beginners|beginner|starter|foundation)/.test(text)) return [...CLASS_SUBJECT_PRESETS.beginners];
+  if (/(jss|junior\s*secondary)/.test(text)) return [...CLASS_SUBJECT_PRESETS.juniorSecondary];
+  if (/(primary|pry|basic)/.test(text)) return [...CLASS_SUBJECT_PRESETS.primary];
+  return [...CLASS_SUBJECT_PRESETS.primary];
+}
+
+function getEditableSubjectOptions(className: string, stream: SubjectStream): readonly string[] {
+  if (isSeniorSecondaryClass(className)) {
+    return stream === 'custom' ? getPresetSubjects('science') : getPresetSubjects(stream);
+  }
+  return getClassSubjectPreset(className);
 }
 
 export function Initials({ name }: { name: string }) {
@@ -552,25 +640,42 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
   const [subjectRows, setSubjectRows] = useState<SubjectRow[]>([]);
   const [savingSubjects, setSavingSubjects] = useState(false);
 
+  const profile = details.data?.student ?? existing.data?.student ?? null;
+
+  const applyClassPreset = useCallback((className: string) => {
+    const preset = getClassSubjectPreset(className);
+    setSubjectRows(preset.length === 0 ? [] : preset.map((subject) => ({ subject, ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'F' })));
+    setStream('custom');
+  }, []);
+
   useEffect(() => {
     const rows = details.data?.summary?.subjects ?? [];
     if (!Array.isArray(rows) || rows.length === 0) {
-      setSubjectRows([]);
-      setStream('custom');
+      const className = profile?.className ?? '';
+      if (isSeniorSecondaryClass(className)) {
+        setSubjectRows([]);
+        setStream('science');
+      } else {
+        applyClassPreset(className);
+      }
       return;
     }
 
     const normalized = normalizeSubjectRows(rows);
     setSubjectRows(normalized);
 
-    const firstSubject = normalized[0]?.subject ?? '';
-    const detected = (
-      Object.keys(SUBJECT_PRESETS) as Array<keyof typeof SUBJECT_PRESETS>
-    ).find((key) =>
-      (SUBJECT_PRESETS[key] as readonly string[]).includes(firstSubject),
-    );
-    setStream(detected ?? 'custom');
-  }, [details.data?.summary]);
+    const className = profile?.className ?? '';
+    if (isSeniorSecondaryClass(className)) {
+      const firstSubject = normalized[0]?.subject ?? '';
+      const detected = (
+        Object.keys(SUBJECT_PRESETS) as Array<keyof typeof SUBJECT_PRESETS>
+      ).find((key) => (SUBJECT_PRESETS[key] as readonly string[]).includes(firstSubject));
+      setStream(detected ?? 'custom');
+      return;
+    }
+
+    setStream('custom');
+  }, [details.data?.summary, profile?.className, applyClassPreset]);
 
   const updateSubjectRow = (index: number, patch: Partial<SubjectRow>) => {
     setSubjectRows((current) =>
@@ -621,7 +726,6 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
     }
   }, [existing.data]);
 
-  const profile = details.data?.student ?? existing.data?.student ?? null;
   const summary = details.data?.summary ?? null;
   const history = details.data?.history ?? [];
   const allStudents = useLoad(() => (profile ? api.listStudents({ classId: profile.classId }) : Promise.resolve({ students: [], total: 0 })), [profile?.classId]);
@@ -843,18 +947,24 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                 </div>
 
                 <div className="ap-panel-controls">
-                  <span className="ap-select compact">
-                    <select
-                      value={stream}
-                      aria-label="Subject stream"
-                      onChange={(event) => applyStreamPreset(event.target.value as SubjectStream)}
-                    >
-                      <option value="custom">Custom</option>
-                      <option value="science">Science</option>
-                      <option value="arts">Arts</option>
-                      <option value="commercial">Commercial</option>
-                    </select>
-                  </span>
+                  {isSeniorSecondaryClass(profile.className) ? (
+                    <span className="ap-select compact">
+                      <select
+                        value={stream}
+                        aria-label="Subject stream"
+                        onChange={(event) => applyStreamPreset(event.target.value as SubjectStream)}
+                      >
+                        <option value="custom">Custom</option>
+                        <option value="science">Science</option>
+                        <option value="arts">Arts</option>
+                        <option value="commercial">Commercial</option>
+                      </select>
+                    </span>
+                  ) : (
+                    <button type="button" className="ap-button light" onClick={() => applyClassPreset(profile.className)}>
+                      Use class subjects
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -872,7 +982,7 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                   <p className="ap-table-empty">No result data has been uploaded yet for this student.</p>
                 ) : (
                   subjectRows.map((item, index) => {
-                    const presetOptions = getPresetSubjects(stream === 'custom' ? 'science' : stream);
+                    const presetOptions = getEditableSubjectOptions(profile.className, stream);
 
                     return (
                       <div key={`${item.subject}-${index}`} className="ap-table-row" role="row">
@@ -882,10 +992,7 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                             onChange={(event) => updateSubjectRow(index, { subject: event.target.value })}
                             style={{ width: '100%' }}
                           >
-                            {(stream === 'custom'
-                              ? [...new Set([...presetOptions, item.subject])]
-                              : getPresetSubjects(stream)
-                            ).map((subject) => (
+                            {[...new Set([...presetOptions, item.subject])].map((subject) => (
                               <option key={subject} value={subject}>{subject}</option>
                             ))}
                           </select>
