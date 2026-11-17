@@ -161,7 +161,7 @@ export function BrandMark({ size = 34, className = '' }: { size?: number; classN
     <span
     id='pl'
       className={`pt-mark ${className}`.trim()}
-      style={{ width: size, height: size }}
+      
       aria-hidden="true"
     >
       <img src={brandIcon} alt="" />
