@@ -1039,9 +1039,33 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                 <button type="button" className="ap-button light" onClick={() => applyStreamPreset('custom')}>
                   Custom subjects
                 </button>
-                <button type="button" className="ap-button dark" onClick={() => { }}>
-                  Save changes
-                </button>
+                
+<button
+  type="button"
+  className="ap-button dark"
+  disabled={savingSubjects}
+  onClick={async () => {
+    if (!profile || savingSubjects) return;
+
+    setSavingSubjects(true);
+
+    try {
+      await api.saveStudentSubjects(profile.id, {
+        stream,
+        subjects: subjectRows.map((row) => row.subject),
+      });
+
+      showMessage('Subjects saved successfully.');
+    } catch (error) {
+      showMessage(errorText(error));
+    } finally {
+      setSavingSubjects(false);
+    }
+  }}
+>
+  {savingSubjects ? 'Saving…' : 'Save changes'}
+</button>
+
               </div>
             </section>
 
