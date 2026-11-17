@@ -11,7 +11,7 @@ import {
   ResultsReviewPage,
   ResultsUploadPage,
 } from './portal/admin-results';
-import { AttendancePage, SchoolSetupPage } from './portal/admin-setup';
+import { AttendancePage, SchoolSetupPage, StaffManagementPage } from './portal/admin-setup';
 import {
   AccessCodeManagementPage,
   GenerateClassCodesPage,
@@ -80,6 +80,7 @@ function AppRoutes() {
         <Route path="/results-review" element={admin(<ResultsReviewPage />)} />
         <Route path="/audit-log" element={admin(<AuditLogPage />)} />
         <Route path="/school-setup" element={admin(<SchoolSetupPage />)} />
+        <Route path="/staff-management" element={admin(<StaffManagementPage />)} />
 
         <Route path="*" element={<LandingPage />} />
       </Routes>

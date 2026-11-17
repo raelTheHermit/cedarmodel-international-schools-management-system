@@ -197,15 +197,25 @@ function StaffPanel() {
   );
 }
 
+export function StaffManagementPage() {
+  return (
+    <AdminShell section="staff" title="Staff Management">
+      <div className="ap-page wide">
+        <AdminPageHeader title="Staff Management" subtitle="Create staff accounts, assign classes, and manage access." />
+        <StaffPanel />
+      </div>
+    </AdminShell>
+  );
+}
+
 export function SchoolSetupPage() {
   return (
     <AdminShell section="setup" title="School Setup">
       <div className="ap-page wide">
-        <AdminPageHeader title="School Setup" subtitle="Terms, classes, school details and staff accounts." />
+        <AdminPageHeader title="School Setup" subtitle="Terms, classes, and school details." />
         <TermPanel onChanged={() => undefined} />
         <ClassesPanel onChanged={() => undefined} />
         <SchoolPanel />
-        <StaffPanel />
       </div>
     </AdminShell>
   );

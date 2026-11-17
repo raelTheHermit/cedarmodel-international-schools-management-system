@@ -104,7 +104,7 @@ export function ParentShell({
 /* Staff portal                                                        */
 /* ------------------------------------------------------------------ */
 
-export type AdminSection = 'overview' | 'students' | 'attendance' | 'codes' | 'upload' | 'review' | 'audit' | 'setup';
+export type AdminSection = 'overview' | 'students' | 'attendance' | 'codes' | 'upload' | 'review' | 'audit' | 'setup' | 'staff';
 
 const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: string; adminOnly: boolean }> = [
   { key: 'overview', label: 'Overview', icon: 'home', to: '/admin-overview', adminOnly: true },
@@ -115,6 +115,7 @@ const adminNav: Array<{ key: AdminSection; label: string; icon: IconName; to: st
   { key: 'review', label: 'Results Review', icon: 'doc', to: '/results-review', adminOnly: true },
   { key: 'audit', label: 'Audit Log', icon: 'history', to: '/audit-log', adminOnly: true },
   { key: 'setup', label: 'School Setup', icon: 'doc', to: '/school-setup', adminOnly: true },
+  { key: 'staff', label: 'Staff Management', icon: 'user', to: '/staff-management', adminOnly: true },
 ];
 
 export function AdminShell({
