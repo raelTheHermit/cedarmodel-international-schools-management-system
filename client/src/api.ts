@@ -85,6 +85,10 @@ export type StudentInput = {
   active: boolean;
 };
 
+export type StudentResultInput = {
+  subjects: Array<{ subject: string; ca1: number; ca2: number; exam: number }>;
+};
+
 export type TableInput = { csv?: string; xlsxBase64?: string };
 
 export type ImportPreview = {
@@ -223,6 +227,12 @@ export const api = {
   getStudent: (id: number) => apiRequest<{ student: AdminStudent }>(`/admin/students/${id}`),
 
   getStudentDetails: (id: number) => apiRequest<StudentDetail>(`/admin/students/${id}/details`),
+
+  saveStudentResults: (studentId: number, input: StudentResultInput) =>
+    apiRequest<{ ok: true; batchId: number; status: 'draft'; subjects: SubjectLine[]; average: number; highest: number; creditsEarned: number; schoolDays: number | null; daysPresent: number | null; comment: string | null }>(
+      `/admin/results/students/${studentId}`,
+      { method: 'PUT', body: JSON.stringify(input) },
+    ),
 
   createStudent: (input: StudentInput) =>
     apiRequest<{ student: AdminStudent }>('/admin/students', { method: 'POST', body: JSON.stringify(input) }),

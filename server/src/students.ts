@@ -10,6 +10,7 @@ import { asyncHandler } from './session.js';
 import { TableInputError, tableInputSchema, tableInputToCsv } from './table-input.js';
 import type { TableInput } from './table-input.js';
 import { generateAccessCode, normalizePhone, parseStudentRegisterCsv } from './student-management.js';
+import { summarize } from './grading.js';
 
 type Staff = Extract<SessionUser, { kind: 'staff' }>;
 
@@ -312,21 +313,8 @@ export function createAdminRouter(): Router {
 
       const history = historyRows.rows.map((entry) => {
         const data = entry.data ?? {};
-        const subjects: Array<{
-          subject: string;
-          ca1: number;
-          ca2: number;
-          exam: number;
-          total: number;
-          grade: string;
-        }> = Array.isArray(data.subjects) ? data.subjects.map((subject: any) => ({
-          subject: String(subject.subject ?? 'Subject'),
-          ca1: Number(subject.ca1 ?? 0),
-          ca2: Number(subject.ca2 ?? 0),
-          exam: Number(subject.exam ?? 0),
-          total: Number(subject.total ?? (Number(subject.ca1 ?? 0) + Number(subject.ca2 ?? 0) + Number(subject.exam ?? 0))),
-          grade: String(subject.grade ?? 'F'),
-        })) : [];
+        // Use the same grade scale and total calculation as result uploads and parent reports.
+        const subjects = summarize(data).subjects;
         const weightedAverage = subjects.length
           ? Number((subjects.reduce((sum: number, item) => sum + item.total, 0) / subjects.length).toFixed(1)) : 0;
         const attendance = {

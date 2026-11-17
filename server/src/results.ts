@@ -20,6 +20,27 @@ const uploadSchema = z.intersection(
 
 const idParam = z.coerce.number().int().positive();
 
+const studentResultsSchema = z.object({
+  subjects: z.array(z.object({
+    subject: z.string().trim().min(1).max(100),
+    ca1: z.number().finite().min(0).max(100),
+    ca2: z.number().finite().min(0).max(100),
+    exam: z.number().finite().min(0).max(100),
+  })).min(1, 'Add at least one subject.').max(30, 'A student can have at most 30 subjects.'),
+}).superRefine(({ subjects }, ctx) => {
+  const seen = new Set<string>();
+  subjects.forEach((subject, index) => {
+    const key = subject.subject.trim().toLocaleLowerCase();
+    if (seen.has(key)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['subjects', index, 'subject'], message: 'Each subject can only appear once.' });
+    }
+    seen.add(key);
+    if (subject.ca1 + subject.ca2 + subject.exam > 100) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['subjects', index], message: `${subject.subject}: CA1 + CA2 + Exam cannot exceed 100.` });
+    }
+  });
+});
+
 async function loadBatch(id: number) {
   const result = await getPool().query(
     `SELECT rb.id, rb.class_id, rb.term_id, rb.status, c.name AS class_name, t.name AS term_name, t.session
@@ -46,6 +67,126 @@ export function createResultsRouter(): Router {
     anyStaff,
     asyncHandler(async (_req, res) => {
       res.json({ term: await getCurrentTerm() });
+    }),
+  );
+
+
+  router.put(
+    '/results/students/:id',
+    anyStaff,
+    asyncHandler(async (req, res) => {
+      const id = validate(idParam, req.params.id, res);
+      const body = validate(studentResultsSchema, req.body, res);
+      if (id === null || !body) return;
+
+      const actor = staff(req);
+      const term = await getCurrentTerm();
+      if (!term) return fail(res, 409, 'Set the current term before saving student results.');
+
+      const outcome = await withTransaction(async (client) => {
+        // Do not save against a term that stopped being current while this request was starting.
+        const currentTerm = await client.query(
+          'SELECT id FROM terms WHERE id = $1 AND is_current = true FOR SHARE',
+          [term.id],
+        );
+        if (!currentTerm.rows[0]) return { kind: 'term_changed' as const };
+
+        const studentResult = await client.query(
+          'SELECT id, class_id FROM students WHERE id = $1 FOR UPDATE',
+          [id],
+        );
+        const student = studentResult.rows[0];
+        if (!student) return { kind: 'missing_student' as const };
+
+        const classId = Number(student.class_id);
+        const allowed = await allowedClassIds(actor);
+        if (allowed && !allowed.includes(classId)) return { kind: 'forbidden' as const };
+
+        // Serialize edits for the same class/term, including the first result-row creation.
+        await client.query('SELECT pg_advisory_xact_lock($1, $2)', [classId, term.id]);
+
+        const batchResult = await client.query(
+          `SELECT id, status FROM result_batches
+           WHERE class_id = $1 AND term_id = $2
+           ORDER BY id DESC LIMIT 1 FOR UPDATE`,
+          [classId, term.id],
+        );
+
+        let batchId: number;
+        if (batchResult.rows[0]) {
+          if (batchResult.rows[0].status === 'published') return { kind: 'published' as const };
+          batchId = Number(batchResult.rows[0].id);
+          await client.query(
+            `UPDATE result_batches
+             SET uploaded_by = $2, uploaded_at = NOW(), reviewed_by = NULL, reviewed_at = NULL
+             WHERE id = $1`,
+            [batchId, actor.id],
+          );
+        } else {
+          const created = await client.query(
+            `INSERT INTO result_batches (class_id, term_id, layout, status, uploaded_by)
+             VALUES ($1, $2, 'standard', 'draft', $3) RETURNING id`,
+            [classId, term.id, actor.id],
+          );
+          batchId = Number(created.rows[0].id);
+        }
+
+        const existingRow = await client.query(
+          `SELECT id, data FROM result_rows
+           WHERE batch_id = $1 AND student_id = $2
+           ORDER BY id LIMIT 1 FOR UPDATE`,
+          [batchId, id],
+        );
+        const previousData = existingRow.rows[0]?.data && typeof existingRow.rows[0].data === 'object'
+          ? existingRow.rows[0].data as Partial<StoredResult>
+          : {};
+        const nextData: StoredResult = {
+          subjects: body.subjects,
+          schoolDays: previousData.schoolDays ?? null,
+          daysPresent: previousData.daysPresent ?? null,
+          comment: previousData.comment ?? null,
+        };
+
+        let resultRowId: number;
+        if (existingRow.rows[0]) {
+          resultRowId = Number(existingRow.rows[0].id);
+          await client.query(
+            'UPDATE result_rows SET data = $2::jsonb, updated_at = NOW() WHERE id = $1',
+            [resultRowId, JSON.stringify(nextData)],
+          );
+        } else {
+          const inserted = await client.query(
+            'INSERT INTO result_rows (batch_id, student_id, data) VALUES ($1, $2, $3::jsonb) RETURNING id',
+            [batchId, id, JSON.stringify(nextData)],
+          );
+          resultRowId = Number(inserted.rows[0].id);
+        }
+
+        await audit(
+          client,
+          actor,
+          'result_row',
+          resultRowId,
+          'subjects',
+          previousData.subjects ?? null,
+          nextData.subjects,
+        );
+
+        return {
+          kind: 'saved' as const,
+          batchId,
+          result: summarize(nextData),
+        };
+      });
+
+      if (outcome.kind === 'term_changed') return fail(res, 409, 'The current term changed. Reload the page and try again.');
+      if (outcome.kind === 'missing_student') return fail(res, 404, 'Student not found.');
+      if (outcome.kind === 'forbidden') return noAccess(res);
+      if (outcome.kind === 'published') {
+        return fail(res, 409, 'These results are already published. An administrator must unpublish them before editing.');
+      }
+
+      res.json({ ok: true, batchId: outcome.batchId, status: 'draft', ...outcome.result });
     }),
   );
 
