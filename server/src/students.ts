@@ -328,7 +328,7 @@ export function createAdminRouter(): Router {
           grade: String(subject.grade ?? 'F'),
         })) : [];
         const weightedAverage = subjects.length
-          ? Number((subjects.reduce((sum: number, item) => sum + item.total, 0) / subjects.length).toFixed(1))
+          ? Number((subjects.reduce((sum: number, item) => sum + item.total, 0) / subjects.length).toFixed(1)) : 0;
         const attendance = {
           schoolDays: Number(data.schoolDays ?? 0),
           daysPresent: Number(data.daysPresent ?? 0),
