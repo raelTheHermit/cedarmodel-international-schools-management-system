@@ -116,6 +116,11 @@
    Auth screens
    ========================================================================== */
 
+#pl{
+  height: 100px;
+  width: 100px;
+}
+
 .au-shell {
   min-height: 100vh;
   padding: 10px;

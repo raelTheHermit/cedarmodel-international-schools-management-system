@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import brandIcon from '../assets/icons/logo.jpg';
-
+import './portal.css'
 export type IconName =
   | 'home'
   | 'users'
@@ -159,6 +159,7 @@ export function Icon({
 export function BrandMark({ size = 34, className = '' }: { size?: number; className?: string }) {
   return (
     <span
+    id='pl'
       className={`pt-mark ${className}`.trim()}
       style={{ width: size, height: size }}
       aria-hidden="true"
