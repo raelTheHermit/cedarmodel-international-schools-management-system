@@ -239,6 +239,10 @@ export function StudentManagementPage() {
 
   const rows = students.data?.students ?? [];
   const filtering = Boolean(debounced) || classId !== 'all' || status !== 'all';
+  const activeStudents = rows.filter((student) => student.active).length;
+  const inactiveStudents = rows.filter((student) => !student.active).length;
+  const totalStudents = students.data?.total ?? rows.length;
+  const classCount = classes.data?.classes?.length ?? 0;
 
   const toggleActive = async (student: AdminStudent) => {
     const next = !student.active;
@@ -297,25 +301,57 @@ export function StudentManagementPage() {
             )}
           </section>
         ) : (
-          <section className="ap-panel" aria-busy={students.loading}>
-            <div className="ap-panel-head">
-              <div>
-                <p className="ap-kicker">School register</p>
-                <h3 className="ap-panel-title">All students</h3>
-                <p className="ap-panel-note">{students.loading ? 'Loading…' : `Showing ${rows.length} of ${students.data?.total ?? 0} records`}</p>
+          <>
+            <div className="ap-stat-grid four ap-student-summary">
+              <div className="ap-stat plain">
+                <div className="ap-stat-top">
+                  <span>Total students</span>
+                  <span className="ap-stat-icon"><Icon name="users" size={14} /></span>
+                </div>
+                <strong>{totalStudents}</strong>
               </div>
-              <div className="ap-panel-controls">
-                <InlineSearch value={query} onChange={setQuery} placeholder="Search name or admission number" />
-                <ClassFilter classes={classes.data?.classes ?? []} value={classId} onChange={setClassId} />
-                <span className="ap-select compact">
-                  <select value={status} aria-label="Filter by status" onChange={(event) => setStatus(event.target.value as typeof status)}>
-                    <option value="all">All statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </span>
+              <div className="ap-stat plain">
+                <div className="ap-stat-top">
+                  <span>Active</span>
+                  <span className="ap-stat-icon"><Icon name="check" size={14} /></span>
+                </div>
+                <strong>{activeStudents}</strong>
+              </div>
+              <div className="ap-stat plain">
+                <div className="ap-stat-top">
+                  <span>Inactive</span>
+                  <span className="ap-stat-icon"><Icon name="alert" size={14} /></span>
+                </div>
+                <strong>{inactiveStudents}</strong>
+              </div>
+              <div className="ap-stat plain">
+                <div className="ap-stat-top">
+                  <span>Classes</span>
+                  <span className="ap-stat-icon"><Icon name="doc" size={14} /></span>
+                </div>
+                <strong>{classCount}</strong>
               </div>
             </div>
+
+            <section className="ap-panel" aria-busy={students.loading}>
+              <div className="ap-panel-head">
+                <div>
+                  <p className="ap-kicker">School register</p>
+                  <h3 className="ap-panel-title">All students</h3>
+                  <p className="ap-panel-note">{students.loading ? 'Loading…' : `Showing ${rows.length} of ${totalStudents} records`}</p>
+                </div>
+                <div className="ap-panel-controls">
+                  <InlineSearch value={query} onChange={setQuery} placeholder="Search name or admission number" />
+                  <ClassFilter classes={classes.data?.classes ?? []} value={classId} onChange={setClassId} />
+                  <span className="ap-select compact">
+                    <select value={status} aria-label="Filter by status" onChange={(event) => setStatus(event.target.value as typeof status)}>
+                      <option value="all">All statuses</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </span>
+                </div>
+              </div>
 
             <div className="ap-table students" role="table" aria-label="Students">
               <div className="ap-table-head" role="row">
@@ -353,8 +389,9 @@ export function StudentManagementPage() {
                   </span>
                 </div>
               ))}
-            </div>
-          </section>
+              </div>
+            </section>
+          </>
         )}
       </div>
     </AdminShell>

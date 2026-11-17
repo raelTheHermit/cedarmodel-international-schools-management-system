@@ -981,12 +981,12 @@
 .ap-panel { overflow: hidden; }
 .ap-card { padding: 29px 27px 27px; }
 
-.ap-panel-head { padding: 22px 23px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ap-panel-head { padding: 22px 23px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .ap-panel-head.tight { padding-bottom: 14px; }
 .ap-panel-title { margin: 8px 0 0; font-size: 17px; font-weight: 400; letter-spacing: -0.02em; }
 .ap-panel-title.small { font-size: 15px; }
 .ap-panel-note { margin: 9px 0 0; font-size: 9.5px; color: var(--pt-muted); }
-.ap-panel-controls { display: flex; align-items: center; gap: 8px; }
+.ap-panel-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 
 .ap-inline-search { width: 260px; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border: 1px solid #d9d9d3; border-radius: 8px; background: #fff; color: #55554f; }
 .ap-inline-search input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: none; font-size: 11px; color: var(--pt-ink); }
@@ -1078,7 +1078,8 @@
 .ap-table.codes .ap-table-head,
 .ap-table.codes .ap-table-row { grid-template-columns: 269fr 191fr 171fr 208fr 190fr 101fr; }
 .ap-table-head { height: 42px; background: #fafaf8; border-bottom: 1px solid var(--pt-line-soft); font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pt-muted); }
-.ap-table-row { min-height: 68px; border-bottom: 1px solid var(--pt-line-soft); color: #3a3a37; }
+.ap-table-row { min-height: 68px; border-bottom: 1px solid var(--pt-line-soft); color: #3a3a37; transition: background 0.15s ease; }
+.ap-table-row:hover { background: #fafaf8; }
 .ap-table-row:last-child { border-bottom: 0; }
 .ap-table-empty { margin: 0; padding: 40px 23px; text-align: center; font-size: 12px; color: var(--pt-muted); list-style: none; }
 .ap-person { display: flex; align-items: center; gap: 11px; }
@@ -1092,9 +1093,13 @@
 
 .ap-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 9px; font-weight: 700; }
 .ap-pill i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
-.ap-pill.success { background: var(--pt-green-bg); border: 1px solid var(--pt-green-line); color: #1f5a35; }
-.ap-pill.muted { background: #f1f1ed; border: 1px solid #e6e6e0; color: #6b6b66; }
+.ap-pill.success { background: #edf9f0; border: 1px solid #cfead8; color: #1d5d39; }
+.ap-pill.muted { background: #f3f3f1; border: 1px solid #e4e4df; color: #5d5d57; }
 .ap-tag { display: inline-flex; align-items: center; padding: 6px 11px; border-radius: 999px; background: #efefea; font-size: 9px; font-weight: 700; color: #3a3a37; white-space: nowrap; }
+
+.ap-student-summary { margin-bottom: 18px; }
+.ap-student-summary .ap-stat { min-height: 112px; }
+.ap-student-summary .ap-stat strong { font-size: 28px; }
 
 /* Record lists (results upload / review / audit) */
 .ap-records { margin: 0; padding: 0 0 44px; list-style: none; border-top: 1px solid var(--pt-line-soft); }
