@@ -507,12 +507,13 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
   const existing = useLoad(() => (studentId ? api.getStudent(studentId) : Promise.resolve(null)), [studentId]);
   const details = useLoad(() => (studentId ? api.getStudentDetails(studentId) : Promise.resolve(null)), [studentId]);
 
-  
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [stream, setStream] = useState<SubjectStream>('custom');
   const [subjectRows, setSubjectRows] = useState<SubjectRow[]>([]);
+  const [savingSubjects, setSavingSubjects] = useState(false);
 
   useEffect(() => {
     const rows = details.data?.summary?.subjects ?? [];
@@ -526,8 +527,10 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
     setSubjectRows(normalized);
 
     const firstSubject = normalized[0]?.subject ?? '';
-    const detected = (Object.keys(SUBJECT_PRESETS) as Array<keyof typeof SUBJECT_PRESETS>).find((key) =>
-      SUBJECT_PRESETS[key].includes(firstSubject),
+    const detected = (
+      Object.keys(SUBJECT_PRESETS) as Array<keyof typeof SUBJECT_PRESETS>
+    ).find((key) =>
+      (SUBJECT_PRESETS[key] as readonly string[]).includes(firstSubject),
     );
     setStream(detected ?? 'custom');
   }, [details.data?.summary]);
@@ -690,9 +693,27 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
 
             <FormFooter>
               <button type="button" className="ap-button light" onClick={() => navigate('/student-management')}>Cancel</button>
-              <button type="submit" className="ap-button dark" disabled={busy}>
-                {busy ? 'Saving…' : 'Add student'}
-                <Icon name="arrowRight" size={16} />
+              <button
+                type="button"
+                className="ap-button dark"
+                disabled={savingSubjects}
+                onClick={async () => {
+                  if (!profile) return;
+                  setSavingSubjects(true);
+                  try {
+                    await api.saveStudentSubjects(profile.id, {
+                      stream,
+                      subjects: subjectRows.map((row) => row.subject),
+                    });
+                    showMessage('Subjects saved.');
+                  } catch (error) {
+                    showMessage(errorText(error));
+                  } finally {
+                    setSavingSubjects(false);
+                  }
+                }}
+              >
+                {savingSubjects ? 'Saving…' : 'Save changes'}
               </button>
             </FormFooter>
           </form>
