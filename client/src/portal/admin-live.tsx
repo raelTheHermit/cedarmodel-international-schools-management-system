@@ -507,12 +507,7 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
   const existing = useLoad(() => (studentId ? api.getStudent(studentId) : Promise.resolve(null)), [studentId]);
   const details = useLoad(() => (studentId ? api.getStudentDetails(studentId) : Promise.resolve(null)), [studentId]);
 
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
-  const [stream, setStream] = useState<SubjectStream>('custom');
-  const [subjectRows, setSubjectRows] = useState<SubjectRow[]>([]);
-
+  
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
