@@ -31,6 +31,10 @@ export function fail(res: Response, status: number, message: string, fieldErrors
   return res.status(status).json({ message, fieldErrors });
 }
 
+function noAccess(res: Response) {
+  return fail(res, 403, 'You can only work with your own classes.');
+}
+
 export function validate<T extends z.ZodTypeAny>(schema: T, data: unknown, res: Response): z.infer<T> | null {
   const parsed = schema.safeParse(data);
   if (parsed.success) return parsed.data;
@@ -308,17 +312,23 @@ export function createAdminRouter(): Router {
 
       const history = historyRows.rows.map((entry) => {
         const data = entry.data ?? {};
-        const subjects = Array.isArray(data.subjects) ? data.subjects.map((subject: any) => ({
+        const subjects: Array<{
+          subject: string;
+          ca1: number;
+          ca2: number;
+          exam: number;
+          total: number;
+          grade: string;
+        }> = Array.isArray(data.subjects) ? data.subjects.map((subject: any) => ({
           subject: String(subject.subject ?? 'Subject'),
           ca1: Number(subject.ca1 ?? 0),
           ca2: Number(subject.ca2 ?? 0),
           exam: Number(subject.exam ?? 0),
-          total: Number(subject.total ?? ((Number(subject.ca1 ?? 0) + Number(subject.ca2 ?? 0) + Number(subject.exam ?? 0)))),
+          total: Number(subject.total ?? (Number(subject.ca1 ?? 0) + Number(subject.ca2 ?? 0) + Number(subject.exam ?? 0))),
           grade: String(subject.grade ?? 'F'),
         })) : [];
         const weightedAverage = subjects.length
-          ? Number((subjects.reduce((sum, item) => sum + item.total, 0) / subjects.length).toFixed(1))
-          : 0;
+          ? Number((subjects.reduce((sum: number, item) => sum + item.total, 0) / subjects.length).toFixed(1))
         const attendance = {
           schoolDays: Number(data.schoolDays ?? 0),
           daysPresent: Number(data.daysPresent ?? 0),
@@ -329,7 +339,7 @@ export function createAdminRouter(): Router {
           session: String(entry.session),
           status: String(entry.status),
           weightedAverage,
-          termScore: subjects.reduce((sum, item) => sum + item.total, 0),
+          termScore: subjects.reduce((sum: number, item) => sum + item.total, 0),
           attendance,
           subjects,
         };
