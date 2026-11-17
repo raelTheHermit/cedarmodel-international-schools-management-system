@@ -12,7 +12,7 @@ import { AdminPageHeader, AdminShell } from './shells';
 const KINDERGARTEN_SUBJECTS = [
   'Math',
   'Quantitative Reasoning',
-  'English Language',
+  'English Lang',
   'Verbal Reasoning',
   'Elementary Science',
   'Civic and Moral Instructions',
@@ -35,7 +35,6 @@ const BEGINNERS_SUBJECTS = [
   'Writing',
   'Picture Reading',
   'Word Building',
-  'Writing',
 ] as const;
 
 const PRIMARY_SUBJECTS = [
@@ -170,15 +169,15 @@ function getPresetSubjects(stream: SubjectStream): readonly string[] {
 }
 
 function isSeniorSecondaryClass(className: string): boolean {
-  return /(ss|senior\s*secondary)/i.test(className);
+  return /(^|\s|\b)(ss|senior\s*secondary)(\d+|\b)/i.test(className) || /ss\d+/i.test(className);
 }
 
 function getClassSubjectPreset(className: string): readonly string[] {
-  const text = className.toLowerCase();
+  const text = className.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (isSeniorSecondaryClass(className)) return [];
   if (/(kg|kindergarten|nursery)/.test(text)) return [...CLASS_SUBJECT_PRESETS.kindergarten];
   if (/(beginners|beginner|starter|foundation)/.test(text)) return [...CLASS_SUBJECT_PRESETS.beginners];
-  if (/(jss|junior\s*secondary)/.test(text)) return [...CLASS_SUBJECT_PRESETS.juniorSecondary];
+  if (/(jss|juniorsecondary|js)/.test(text)) return [...CLASS_SUBJECT_PRESETS.juniorSecondary];
   if (/(primary|pry|basic)/.test(text)) return [...CLASS_SUBJECT_PRESETS.primary];
   return [...CLASS_SUBJECT_PRESETS.primary];
 }
