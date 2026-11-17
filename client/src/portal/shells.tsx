@@ -161,7 +161,7 @@ export function AdminShell({
         <div className="ap-brand">
           <BarsLogo />
           <div>
-            <strong>Cedar Model Schools</strong>
+            <strong>Miracle Schools</strong>
             <small>School Results Portal</small>
           </div>
         </div>

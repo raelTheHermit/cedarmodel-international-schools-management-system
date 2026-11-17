@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Applies the production-readiness changes to the Cedar Model repository.
+# Applies the production-readiness changes to the Miracle repository.
 #
 # Usage (from the folder you unzipped cedarmodel-changes.zip into):
 #   bash apply.sh /path/to/cedarmodel-international-schools-management-system
@@ -147,8 +147,8 @@ done
 
 AUTH_TSX="client/src/portal/auth.tsx"
 if [ -f "$AUTH_TSX" ] && grep -q "Miracle Schools" "$AUTH_TSX"; then
-  sed -i 's/Miracle Schools/Cedar Model Schools/g' "$AUTH_TSX"
-  ok "Renamed 'Miracle Schools' to 'Cedar Model Schools' in auth.tsx (change it if the real name differs)"
+  sed -i 's/Miracle Schools/Miracle Schools/g' "$AUTH_TSX"
+  ok "Renamed 'Miracle Schools' to 'Miracle Schools' in auth.tsx (change it if the real name differs)"
 fi
 
 # ---------------------------------------------------------------- 7. SESSION_SECRET

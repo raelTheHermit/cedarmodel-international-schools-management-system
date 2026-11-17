@@ -122,7 +122,7 @@ export function LandingPage() {
     >
       <div className="au-col wide">
         <BrandMark />
-        <p className="au-brand-name">Cedar Model Schools</p>
+        <p className="au-brand-name">Miracle Schools</p>
 
         <h1 className="au-title large">Welcome to the<br />School Results Portal</h1>
         <p className="au-lead">Choose how you want to access the portal.</p>
@@ -207,7 +207,7 @@ export function StaffLoginPage() {
         <>
           <HeroBadge>Authorised administrators</HeroBadge>
           <h2>Manage results.<br />Support every learner.</h2>
-          <p>Secure access to the Cedar Model Schools administration portal.</p>
+          <p>Secure access to the Miracle Schools administration portal.</p>
         </>
       )}
     >
@@ -216,7 +216,7 @@ export function StaffLoginPage() {
           <BackLink />
           <BrandMark />
         </div>
-        <p className="au-brand-name">Cedar Model Schools</p>
+        <p className="au-brand-name">Miracle Schools</p>
 
         <h1 className="au-title">Admin login</h1>
         <p className="au-lead small">Sign in with your authorised school administrator account.</p>
