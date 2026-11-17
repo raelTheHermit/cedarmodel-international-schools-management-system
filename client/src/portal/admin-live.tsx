@@ -135,12 +135,11 @@ type SubjectRow = {
 };
 
 function gradeForScore(score: number): string {
-  if (score >= 75) return 'A';
+  if (score >= 80) return 'A';
   if (score >= 70) return 'B';
-  if (score >= 65) return 'C';
-  if (score >= 60) return 'D';
-  if (score >= 50) return 'E';
-  if (score >= 40) return 'P';
+  if (score >= 60) return 'C';
+  if (score >= 50) return 'D';
+  if (score >= 40) return 'E';
   return 'F';
 }
 
@@ -1039,33 +1038,28 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                 <button type="button" className="ap-button light" onClick={() => applyStreamPreset('custom')}>
                   Custom subjects
                 </button>
-                
-<button
-  type="button"
-  className="ap-button dark"
-  disabled={savingSubjects}
-  onClick={async () => {
-    if (!profile || savingSubjects) return;
-
-    setSavingSubjects(true);
-
-    try {
-      await api.saveStudentSubjects(profile.id, {
-        stream,
-        subjects: subjectRows.map((row) => row.subject),
-      });
-
-      showMessage('Subjects saved successfully.');
-    } catch (error) {
-      showMessage(errorText(error));
-    } finally {
-      setSavingSubjects(false);
-    }
-  }}
->
-  {savingSubjects ? 'Saving…' : 'Save changes'}
-</button>
-
+                <button
+                  type="button"
+                  className="ap-button dark"
+                  disabled={savingSubjects || !profile || details.loading || subjectRows.length === 0}
+                  onClick={async () => {
+                    if (!profile || savingSubjects) return;
+                    setSavingSubjects(true);
+                    try {
+                      await api.saveStudentResults(profile.id, {
+                        subjects: subjectRows.map(({ subject, ca1, ca2, exam }) => ({ subject, ca1, ca2, exam })),
+                      });
+                      await details.reload();
+                      showMessage('Results saved as a draft.');
+                    } catch (error) {
+                      showMessage(errorText(error));
+                    } finally {
+                      setSavingSubjects(false);
+                    }
+                  }}
+                >
+                  {savingSubjects ? 'Saving…' : 'Save changes'}
+                </button>
               </div>
             </section>
 
