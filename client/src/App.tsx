@@ -96,7 +96,7 @@ function App() {
       <MessageModalContext.Provider value={setMessage}>
         <div className="app-shell">
           <header className="topbar">
-            <h1>Cedar Model Schools Portal</h1>
+            <h1>Miracle Schools Portal</h1>
           </header>
 
           <AppRoutes />

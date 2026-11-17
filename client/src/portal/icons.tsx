@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import brandIcon from '../assets/icons/logo.jpg';
 
 export type IconName =
   | 'home'
@@ -162,7 +163,7 @@ export function BrandMark({ size = 34, className = '' }: { size?: number; classN
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      <i />
+      <img src={brandIcon} alt="" />
     </span>
   );
 }

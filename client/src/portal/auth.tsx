@@ -140,7 +140,7 @@ export function LandingPage() {
           <button type="button" className="au-choice" onClick={() => navigate('/admin-login')}>
             <span className="au-choice-icon"><img src={adminIcon} alt="" /></span>
             <span className="au-choice-copy">
-              <strong>Admin login</strong>
+              <strong>Staff login</strong>
               <small>Authorised school administrators only.</small>
             </span>
             <Icon name="arrowRight" size={16} className="au-choice-arrow" />
@@ -152,7 +152,7 @@ export function LandingPage() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Admin login                                                         */
+/* Staff login                                                         */
 /* ------------------------------------------------------------------ */
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
