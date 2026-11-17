@@ -9,6 +9,99 @@ import { useMessageModal } from './message-modal';
 import { StaffContext } from './staff-context';
 import { AdminPageHeader, AdminShell } from './shells';
 
+const SUBJECT_PRESETS = {
+  science: [
+    'English Language',
+    'General Mathematics',
+    'Civic Education',
+    'Data Processing',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Further Mathematics',
+    'Agricultural Science',
+    'Geography',
+    'Technical Drawing',
+    'Computer Studies / ICT',
+    'Physical & Health Education',
+    'Foods & Nutrition',
+  ],
+  arts: [
+    'English Language',
+    'General Mathematics',
+    'Civic Education',
+    'Data Processing',
+    'Literature-in-English',
+    'Government',
+    'Christian Religious Studies (CRS)',
+    'History',
+    'Visual Arts / Fine Art',
+    'Music',
+    'French / Arabic',
+    'Additional Nigerian Languages',
+    'Home Management / Catering Craft',
+  ],
+  commercial: [
+    'English Language',
+    'General Mathematics',
+    'Civic Education',
+    'Data Processing',
+    'Economics',
+    'Commerce',
+    'Financial Accounting',
+    'Office Practice / Business Studies',
+    'Marketing',
+    'Geography',
+    'Book-Keeping',
+    'Computer Studies / ICT',
+  ],
+} as const;
+
+type SubjectStream = keyof typeof SUBJECT_PRESETS | 'custom';
+
+type SubjectRow = {
+  subject: string;
+  ca1: number;
+  ca2: number;
+  exam: number;
+  total: number;
+  grade: string;
+};
+
+function gradeForScore(score: number): string {
+  if (score >= 75) return 'A';
+  if (score >= 70) return 'B';
+  if (score >= 65) return 'C';
+  if (score >= 60) return 'D';
+  if (score >= 50) return 'E';
+  if (score >= 40) return 'P';
+  return 'F';
+}
+
+function normalizeSubjectRows(
+  rows: Array<{ subject?: string; ca1?: number; ca2?: number; exam?: number; total?: number; grade?: string }> = [],
+): SubjectRow[] {
+  return rows.map((row) => {
+    const ca1 = Number(row.ca1 ?? 0);
+    const ca2 = Number(row.ca2 ?? 0);
+    const exam = Number(row.exam ?? 0);
+    const total = Number(row.total ?? ca1 + ca2 + exam);
+    return {
+      subject: row.subject || 'Subject',
+      ca1,
+      ca2,
+      exam,
+      total,
+      grade: row.grade || gradeForScore(total),
+    };
+  });
+}
+
+function getPresetSubjects(stream: SubjectStream): readonly string[] {
+  if (stream === 'custom') return [];
+  return SUBJECT_PRESETS[stream];
+}
+
 export function Initials({ name }: { name: string }) {
   return <span className="ap-initials" aria-hidden="true">{initialsOf(name)}</span>;
 }
@@ -414,9 +507,68 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
   const existing = useLoad(() => (studentId ? api.getStudent(studentId) : Promise.resolve(null)), [studentId]);
   const details = useLoad(() => (studentId ? api.getStudentDetails(studentId) : Promise.resolve(null)), [studentId]);
 
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [stream, setStream] = useState<SubjectStream>('custom');
+  const [subjectRows, setSubjectRows] = useState<SubjectRow[]>([]);
+  const [savingSubjects, setSavingSubjects] = useState(false);
+
+  useEffect(() => {
+    const rows = details.data?.summary?.subjects ?? [];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      setSubjectRows([]);
+      setStream('custom');
+      return;
+    }
+
+    const normalized = normalizeSubjectRows(rows);
+    setSubjectRows(normalized);
+
+    const firstSubject = normalized[0]?.subject ?? '';
+    const detected = (
+      Object.keys(SUBJECT_PRESETS) as Array<keyof typeof SUBJECT_PRESETS>
+    ).find((key) =>
+      (SUBJECT_PRESETS[key] as readonly string[]).includes(firstSubject),
+    );
+    setStream(detected ?? 'custom');
+  }, [details.data?.summary]);
+
+  const updateSubjectRow = (index: number, patch: Partial<SubjectRow>) => {
+    setSubjectRows((current) =>
+      current.map((row, rowIndex) => {
+        if (rowIndex !== index) return row;
+        const next = { ...row, ...patch };
+        const total = Number(next.ca1 ?? 0) + Number(next.ca2 ?? 0) + Number(next.exam ?? 0);
+        return { ...next, total, grade: gradeForScore(total) };
+      }),
+    );
+  };
+
+  const applyStreamPreset = (nextStream: SubjectStream) => {
+    setStream(nextStream);
+
+    if (nextStream === 'custom') {
+      setSubjectRows((current) => {
+        if (current.length > 0) return current;
+        return [{ subject: 'English Language', ca1: 0, ca2: 0, exam: 0, total: 0, grade: 'F' }];
+      });
+      return;
+    }
+
+    setSubjectRows(
+      SUBJECT_PRESETS[nextStream].map((subject) => ({
+        subject,
+        ca1: 0,
+        ca2: 0,
+        exam: 0,
+        total: 0,
+        grade: 'F',
+      })),
+    );
+  };
+
 
   useEffect(() => {
     const student = existing.data?.student;
@@ -541,9 +693,27 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
 
             <FormFooter>
               <button type="button" className="ap-button light" onClick={() => navigate('/student-management')}>Cancel</button>
-              <button type="submit" className="ap-button dark" disabled={busy}>
-                {busy ? 'Saving…' : 'Add student'}
-                <Icon name="arrowRight" size={16} />
+              <button
+                type="button"
+                className="ap-button dark"
+                disabled={savingSubjects}
+                onClick={async () => {
+                  if (!profile) return;
+                  setSavingSubjects(true);
+                  try {
+                    await api.saveStudentSubjects(profile.id, {
+                      stream,
+                      subjects: subjectRows.map((row) => row.subject),
+                    });
+                    showMessage('Subjects saved.');
+                  } catch (error) {
+                    showMessage(errorText(error));
+                  } finally {
+                    setSavingSubjects(false);
+                  }
+                }}
+              >
+                {savingSubjects ? 'Saving…' : 'Save changes'}
               </button>
             </FormFooter>
           </form>
@@ -634,9 +804,24 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                   <p className="ap-kicker">Academic summary</p>
                   <h3 className="ap-panel-title">Current subject performance</h3>
                 </div>
+
+                <div className="ap-panel-controls">
+                  <span className="ap-select compact">
+                    <select
+                      value={stream}
+                      aria-label="Subject stream"
+                      onChange={(event) => applyStreamPreset(event.target.value as SubjectStream)}
+                    >
+                      <option value="custom">Custom</option>
+                      <option value="science">Science</option>
+                      <option value="arts">Arts</option>
+                      <option value="commercial">Commercial</option>
+                    </select>
+                  </span>
+                </div>
               </div>
 
-              <div className="ap-table students" role="table" aria-label="Subject summary">
+              <div className="ap-table students" role="table" aria-label="Editable subject summary">
                 <div className="ap-table-head" role="row">
                   <span role="columnheader">Subject</span>
                   <span role="columnheader">CA1</span>
@@ -645,20 +830,75 @@ export function StudentFormPage({ mode }: { mode: 'add' | 'edit' }) {
                   <span role="columnheader">Total</span>
                   <span role="columnheader">Grade</span>
                 </div>
-                {(summary?.subjects?.length ?? 0) === 0 ? (
+
+                {subjectRows.length === 0 ? (
                   <p className="ap-table-empty">No result data has been uploaded yet for this student.</p>
                 ) : (
-                  summary?.subjects.map((item) => (
-                    <div key={item.subject} className="ap-table-row" role="row">
-                      <span role="cell">{item.subject}</span>
-                      <span role="cell">{item.ca1}</span>
-                      <span role="cell">{item.ca2}</span>
-                      <span role="cell">{item.exam}</span>
-                      <span role="cell">{item.total}</span>
-                      <span role="cell">{item.grade}</span>
-                    </div>
-                  ))
+                  subjectRows.map((item, index) => {
+                    const presetOptions = getPresetSubjects(stream === 'custom' ? 'science' : stream);
+
+                    return (
+                      <div key={`${item.subject}-${index}`} className="ap-table-row" role="row">
+                        <span role="cell">
+                          <select
+                            value={item.subject}
+                            onChange={(event) => updateSubjectRow(index, { subject: event.target.value })}
+                            style={{ width: '100%' }}
+                          >
+                            {(stream === 'custom'
+                              ? [...new Set([...presetOptions, item.subject])]
+                              : getPresetSubjects(stream)
+                            ).map((subject) => (
+                              <option key={subject} value={subject}>{subject}</option>
+                            ))}
+                          </select>
+                        </span>
+
+                        <span role="cell">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={item.ca1}
+                            onChange={(event) => updateSubjectRow(index, { ca1: Number(event.target.value) })}
+                          />
+                        </span>
+
+                        <span role="cell">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={item.ca2}
+                            onChange={(event) => updateSubjectRow(index, { ca2: Number(event.target.value) })}
+                          />
+                        </span>
+
+                        <span role="cell">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={item.exam}
+                            onChange={(event) => updateSubjectRow(index, { exam: Number(event.target.value) })}
+                          />
+                        </span>
+
+                        <span role="cell">{item.total}</span>
+                        <span role="cell">{item.grade}</span>
+                      </div>
+                    );
+                  })
                 )}
+              </div>
+
+              <div className="ap-form-footer" style={{ marginTop: 18 }}>
+                <button type="button" className="ap-button light" onClick={() => applyStreamPreset('custom')}>
+                  Custom subjects
+                </button>
+                <button type="button" className="ap-button dark" onClick={() => { }}>
+                  Save changes
+                </button>
               </div>
             </section>
 

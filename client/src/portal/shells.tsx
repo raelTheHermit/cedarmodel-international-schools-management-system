@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import brandIcon from '../assets/icons/logo.png';
+import brandIcon from '../assets/icons/logo.jpg';
 import { BarsLogo, Icon } from './icons';
 import type { IconName } from './icons';
 import { initialsOf } from './data';

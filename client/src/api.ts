@@ -194,6 +194,7 @@ function qs(params: Record<string, string | number | undefined>) {
 }
 
 export const api = {
+
   loginStaff: (payload: { email: string; password: string }) =>
     apiRequest<{ message: string; user: StaffUser }>('/auth/staff', {
       method: 'POST',
@@ -307,4 +308,18 @@ export const api = {
 
   saveAttendance: (input: { classId: number; date: string; entries: Array<{ studentId: number; status: AttendanceStatus }> }) =>
     apiRequest<{ ok: true; saved: number }>('/admin/attendance', { method: 'PUT', body: JSON.stringify(input) }),
+
+  saveStudentSubjects: (studentId: number, input: {
+  stream: 'science' | 'arts' | 'commercial' | 'custom';
+  subjects: string[];
+}) =>
+  apiRequest<{ ok: true; stream: string; subjects: string[] }>(
+    `/admin/students/${studentId}/subjects`,
+    { method: 'PUT', body: JSON.stringify(input) },
+  ),
+
+getStudentSubjects: (studentId: number) =>
+  apiRequest<{ stream: 'science' | 'arts' | 'commercial' | 'custom'; subjects: string[] }>(
+    `/admin/students/${studentId}/subjects`,
+  ),
 };
